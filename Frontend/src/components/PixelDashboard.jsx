@@ -80,16 +80,15 @@ export default function PixelDashboard({ onSelect }) {
                 <div className="max-w-2xl">
 
                 <div className="text-xs tracking-[0.35em] text-slate-200/80">
-                    STORY QUESTS • ADHD FRIENDLY
+                    ADAPTIVE MATH PLATFORM • SPRING BOOT & REACT
                 </div>
 
                 <div className="pixel-heading mt-6 text-4xl md:text-6xl leading-tight">
-                    Learn Math Like a Game
+                    Learn Math Dynamically
                 </div>
 
                 <p className="mt-6 text-base md:text-lg text-slate-200/90 leading-relaxed">
-                    Story-based MCQs with attention modes (Focused / Drifting / Impulsive /
-                    Overwhelmed) + adaptive difficulty.
+                    Performance-driven question difficulty adaptation based on your accuracy, speed, and topic mastery.
                 </p>
 
                 <div className="mt-10 flex items-center gap-4 flex-wrap">
@@ -187,7 +186,7 @@ export default function PixelDashboard({ onSelect }) {
 
                   <div className="mt-5 flex items-center justify-between">
                     <div className="text-xs text-slate-300/70">
-                      Fixed set • Adaptive • Attention-aware
+                      Math bank • Adaptive engine
                     </div>
                     <div
                       className={`text-xs px-3 py-1 rounded-full border ${

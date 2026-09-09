@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { generateQuestion } from "../utils/api";
-import { useAttention } from "../engines/useAttention.js";
-import { updateProgress } from "../utils/api";
+import { generateQuestion, updateProgress } from "../utils/api";
 
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
@@ -20,21 +18,12 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   const [typed, setTyped] = useState("");
   const typingRef = useRef(null);
 
-  // Eye tracking + attention fusion
-  const {
-    eyeActive, eyeMetrics, attentionState: fusedAttention,
-    computeAttention, startEyeTracking,
-  } = useAttention();
-
   // Stats
   const [difficulty, setDifficulty] = useState(2);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [streak, setStreak] = useState(0);
   const [retries, setRetries] = useState(0);
-  const [attentionState, setAttentionState] = useState("Focused");
-  const [attentionHistory, setAttentionHistory] = useState([]);
   const [prevQuestions, setPrevQuestions] = useState([]);
-  const recentErrorsRef = useRef(0);
 
   // Timers
   const startRef = useRef(Date.now());
@@ -77,12 +66,10 @@ export default function TestPage({ section, character, onFinish, onBack }) {
         character: character?.name || character || "Dragon",
         topic: section.topic,
         difficulty: diff,
-        attentionState,
         questionNumber: qNum + 1,
         totalQuestions: TOTAL,
         sessionAccuracy: Math.round(accuracy * 100),
         previousQuestions: prevQuestions.slice(-4),
-        eyeMetrics,
       });
       setMcq(data);
       resetTimers();
@@ -103,9 +90,6 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     }
   };
 
-  // Auto-start eye tracking
-  useEffect(() => { startEyeTracking(); }, [startEyeTracking]);
-
   useEffect(() => {
     loadQuestion();
     return () => {
@@ -120,38 +104,28 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     const ci = mcq.correctIndex ?? mcq.correct_index ?? 0;
     const correct = selected === ci;
 
-    // Track error burst for fusion
-    if (!correct) recentErrorsRef.current++;
-    else recentErrorsRef.current = Math.max(0, recentErrorsRef.current - 1);
-
-    const result = computeAttention({
-      responseTime: rt,
-      correct,
-      retries,
-      recentErrors: recentErrorsRef.current,
-      idleTime,
-    });
-    const state = result.state;
-
-    setAttentionState(state);
-    setAttentionHistory((h) => [...h, state]);
     setLocked(true);
     setShowExplain(true);
 
     const newQ = qNum + 1;
     setQNum(newQ);
+    let nextStreak = streak;
     if (correct) {
       setTotalCorrect((c) => c + 1);
-      setStreak((s) => s + 1);
+      nextStreak = streak + 1;
+      setStreak(nextStreak);
     } else {
+      nextStreak = 0;
       setStreak(0);
       setRetries((r) => r + 1);
     }
 
-    // Adaptive difficulty
-    if (state === "Focused" && correct) setDifficulty((d) => clamp(d + 1, 1, 5));
-    else if (state === "Overwhelmed") setDifficulty((d) => clamp(d - 1, 1, 5));
-    else if (state === "Drifting") setDifficulty((d) => clamp(d - 1, 1, 5));
+    // Performance-based adaptive difficulty rule
+    if (correct && nextStreak >= 2) {
+      setDifficulty((d) => clamp(d + 1, 1, 5));
+    } else if (!correct) {
+      setDifficulty((d) => clamp(d - 1, 1, 5));
+    }
 
     setPrevQuestions((p) => [...p, mcq.question]);
 
@@ -160,14 +134,13 @@ export default function TestPage({ section, character, onFinish, onBack }) {
       sectionId: section.id,
       correct,
       responseTime: rt,
-      attentionState: state,
       xpEarned: correct ? 20 : 5,
     }).catch(() => {});
   };
 
   const next = () => {
     if (qNum >= TOTAL) {
-      onFinish({ totalCorrect, totalQuestions: TOTAL, attentionHistory });
+      onFinish({ totalCorrect, totalQuestions: TOTAL });
       return;
     }
     loadQuestion(difficulty);
@@ -187,17 +160,12 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   return (
     <div className="min-h-screen text-slate-100">
       {/* Top bar */}
-        <div className="sticky top-0 z-50 backdrop-blur-md border-b border-white/[0.06] bg-[rgba(15,23,42,0.82)]">
+      <div className="sticky top-0 z-50 backdrop-blur-md border-b border-white/[0.06] bg-[rgba(15,23,42,0.82)]">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <button onClick={onBack} className="px-4 py-2 rounded-xl border border-[rgba(48,68,105,0.8)] bg-[rgba(13,26,58,0.55)] hover:bg-[rgba(13,26,58,0.85)] transition text-sm">
             ← Roadmap
           </button>
           <div className="flex items-center gap-4">
-            {/* Eye tracking indicator */}
-            <span className={`inline-block h-2 w-2 rounded-full ${eyeActive ? "bg-[rgb(52,211,153)] animate-pulse" : "bg-[rgb(100,116,139)]"}`} />
-            <span className="text-xs text-slate-300/80">
-              {eyeActive ? `👁 ${fusedAttention.state}` : "Eye: Off"}
-            </span>
             <img src={character.image} alt={character.name} className="w-8 h-8 object-contain rounded-lg" />
             <span className="text-sm">{Math.min(qNum, TOTAL)}/{TOTAL}</span>
           </div>

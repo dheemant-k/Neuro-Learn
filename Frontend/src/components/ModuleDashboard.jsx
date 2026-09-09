@@ -121,8 +121,7 @@ export default function ModuleDashboard({ onSelect }) {
                 Choose your learning quest 🧠✨
               </div>
               <div className="mt-2 text-slate-700 max-w-2xl">
-                Story-based MCQs that adapt to your attention. Quick feedback,
-                calm UI, and step-by-step solutions when needed.
+                Interactive math modules with dynamic difficulty adaptation based on your performance signals and historical progress.
               </div>
 
               <div className="mt-4 flex items-center gap-2 flex-wrap">
@@ -227,12 +226,7 @@ export default function ModuleDashboard({ onSelect }) {
         <div className="mt-8 rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="text-sm font-semibold">How NeuroLearn adapts</div>
           <div className="mt-2 text-sm text-slate-700 leading-relaxed">
-            We track response time, idle spikes, and retries to infer attention states:
-            <span className="font-semibold"> Focused</span>,{" "}
-            <span className="font-semibold"> Drifting</span>,{" "}
-            <span className="font-semibold"> Impulsive</span>,{" "}
-            <span className="font-semibold"> Overwhelmed</span>.
-            Then difficulty + support changes automatically.
+            We analyze performance signals such as accuracy, response time, and answer streaks to automatically adjust question difficulty and tailor recommendations.
           </div>
         </div>
       </div>

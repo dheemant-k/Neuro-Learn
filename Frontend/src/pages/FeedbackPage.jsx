@@ -19,7 +19,6 @@ export default function FeedbackPage({ section, character, results, onContinue }
       totalCorrect: results.totalCorrect,
       totalQuestions: results.totalQuestions,
       sectionTitle: section.title,
-      attentionHistory: results.attentionHistory || [],
     })
       .then((data) => {
         if (!cancelled) {

@@ -2,13 +2,6 @@ import { useEffect, useState } from "react";
 import { getDashboard } from "../utils/api";
 import { chapters } from "../data/chapters";
 
-const STATE_COLORS = {
-  Focused: "bg-[rgb(52,211,153)]",
-  Drifting: "bg-[rgb(250,204,21)]",
-  Impulsive: "bg-[rgb(232,121,249)]",
-  Overwhelmed: "bg-[rgb(251,113,133)]",
-};
-
 export default function DashboardPage({ onBack }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -84,18 +77,6 @@ export default function DashboardPage({ onBack }) {
                     <div className="mt-3 h-2 w-full rounded-full bg-[rgba(255,255,255,0.08)] overflow-hidden">
                       <div className="h-2 bg-gradient-to-r from-[rgb(56,189,248)] to-[rgb(94,234,212)] transition-all" style={{ width: `${sec.accuracy}%` }} />
                     </div>
-
-                    {/* Attention state breakdown */}
-                    {sec.state_counts && Object.keys(sec.state_counts).length > 0 && (
-                      <div className="mt-3 flex gap-2 flex-wrap">
-                        {Object.entries(sec.state_counts).map(([state, count]) => (
-                          <span key={state} className="flex items-center gap-1.5 text-xs text-slate-300/80">
-                            <span className={`w-2.5 h-2.5 rounded-full ${STATE_COLORS[state] || "bg-slate-500"}`} />
-                            {state}: {count}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -112,8 +93,6 @@ export default function DashboardPage({ onBack }) {
                         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${h.correct ? "bg-[rgb(52,211,153)]" : "bg-[rgb(251,113,133)]"}`} />
                         <span className="text-slate-300/80">{sectionTitleMap[h.section_id] || h.section_id}</span>
                         <span className="text-slate-400/60">•</span>
-                        <span className={`${STATE_COLORS[h.state] ? "text-slate-200/90" : ""}`}>{h.state}</span>
-                        <span className="text-slate-400/60">•</span>
                         <span className="text-slate-400/70">{h.rt?.toFixed(1)}s</span>
                       </div>
                     ))}
@@ -121,29 +100,6 @@ export default function DashboardPage({ onBack }) {
                 </div>
               </div>
             )}
-
-            {/* Attention Legend */}
-            <div className="mt-10 rounded-2xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(15,23,42,0.72)] p-5">
-              <div className="pixel-heading text-base">Attention States Guide</div>
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-200/90">
-                <div className="flex items-start gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[rgb(52,211,153)] mt-0.5 shrink-0" />
-                  <span><strong>Focused</strong> — engaged and answering correctly</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[rgb(250,204,21)] mt-0.5 shrink-0" />
-                  <span><strong>Drifting</strong> — slow responses, attention wandering</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[rgb(232,121,249)] mt-0.5 shrink-0" />
-                  <span><strong>Impulsive</strong> — fast but incorrect answers</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[rgb(251,113,133)] mt-0.5 shrink-0" />
-                  <span><strong>Overwhelmed</strong> — struggling, needs simpler problems</span>
-                </div>
-              </div>
-            </div>
           </>
         )}
       </div>

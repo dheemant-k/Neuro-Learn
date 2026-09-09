@@ -10,18 +10,18 @@ export default function PixelFooter() {
           <div className="max-w-md">
             <div className="font-semibold text-slate-100 text-lg">NeuroLearn</div>
             <p className="mt-2 text-sm text-slate-300/90 leading-relaxed">
-              Story-based MCQs with real-time attention modes and adaptive difficulty.
+              Performance-driven adaptive learning platform for mathematics.
             </p>
             <p className="mt-2 text-xs text-slate-400/80">
-              Hackathon build • Offline-friendly
+              Enterprise Web Platform • Spring Boot & React
             </p>
           </div>
           <div className="max-w-sm">
-            <div className="font-semibold text-slate-100 text-sm">ADHD-friendly</div>
+            <div className="font-semibold text-slate-100 text-sm">Key Features</div>
             <ul className="mt-2 space-y-1.5 text-sm text-slate-300/80">
-              <li>Calm mode (reduced motion)</li>
-              <li>Short tasks + instant feedback</li>
-              <li>Clear progress + mastery unlocks</li>
+              <li>Performance-based difficulty engine</li>
+              <li>Structured question bank & practice</li>
+              <li>Role-based dashboards (Student, Teacher, Parent)</li>
             </ul>
           </div>
         </div>
