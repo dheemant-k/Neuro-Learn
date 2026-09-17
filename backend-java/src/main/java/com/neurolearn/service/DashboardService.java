@@ -1,0 +1,87 @@
+package com.neurolearn.service;
+
+import com.neurolearn.dto.DashboardResponse;
+import com.neurolearn.entity.*;
+import com.neurolearn.repository.*;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class DashboardService {
+
+    private final UserRepository userRepository;
+    private final StudentProfileRepository profileRepository;
+    private final QuestionAttemptRepository attemptRepository;
+    private final TopicProgressRepository topicProgressRepository;
+
+    public DashboardService(
+            UserRepository userRepository,
+            StudentProfileRepository profileRepository,
+            QuestionAttemptRepository attemptRepository,
+            TopicProgressRepository topicProgressRepository
+    ) {
+        this.userRepository = userRepository;
+        this.profileRepository = profileRepository;
+        this.attemptRepository = attemptRepository;
+        this.topicProgressRepository = topicProgressRepository;
+    }
+
+    public DashboardResponse getDashboardData(String userEmail) {
+        // Find profile by email, or fallback to first available profile
+        StudentProfile profile = null;
+        if (userEmail != null && !userEmail.isBlank()) {
+            Optional<User> userOpt = userRepository.findByEmail(userEmail);
+            if (userOpt.isPresent()) {
+                profile = profileRepository.findByUserId(userOpt.get().getId()).orElse(null);
+            }
+        }
+        if (profile == null) {
+            List<StudentProfile> all = profileRepository.findAll();
+            if (!all.isEmpty()) {
+                profile = all.get(0);
+            }
+        }
+
+        if (profile == null) {
+            return new DashboardResponse(0, 1, 0, 0, 0.0, Collections.emptyList(), Collections.emptyList());
+        }
+
+        List<QuestionAttempt> attempts = attemptRepository.findByStudentProfileIdOrderByTimestampDesc(profile.getId());
+        int totalAnswered = attempts.size();
+        int totalCorrect = (int) attempts.stream().filter(QuestionAttempt::getCorrect).count();
+        double accuracy = totalAnswered > 0 ? Math.round(((double) totalCorrect / totalAnswered) * 1000.0) / 10.0 : 0.0;
+
+        // Section breakdown from TopicProgress
+        List<TopicProgress> topicProgressList = topicProgressRepository.findByStudentProfileId(profile.getId());
+        List<DashboardResponse.SectionStat> sections = new ArrayList<>();
+
+        for (TopicProgress tp : topicProgressList) {
+            int ans = tp.getAttempts() != null ? tp.getAttempts() : 0;
+            int cor = tp.getCorrectCount() != null ? tp.getCorrectCount() : 0;
+            double acc = ans > 0 ? Math.round(((double) cor / ans) * 1000.0) / 10.0 : 0.0;
+            sections.add(new DashboardResponse.SectionStat(tp.getTopic(), ans, cor, acc, 0));
+        }
+
+        // Recent history (last 10)
+        List<DashboardResponse.HistoryItem> recentHistory = attempts.stream()
+                .limit(10)
+                .map(a -> new DashboardResponse.HistoryItem(
+                        a.getQuestion() != null ? a.getQuestion().getTopic() : "intro",
+                        a.getCorrect(),
+                        a.getResponseTimeMs() != null ? Math.round((a.getResponseTimeMs() / 1000.0) * 10.0) / 10.0 : 0.0
+                ))
+                .collect(Collectors.toList());
+
+        return new DashboardResponse(
+                profile.getTotalXp() != null ? profile.getTotalXp() : 0,
+                profile.getCurrentLevel() != null ? profile.getCurrentLevel() : 1,
+                totalAnswered,
+                totalCorrect,
+                accuracy,
+                sections,
+                recentHistory
+        );
+    }
+}

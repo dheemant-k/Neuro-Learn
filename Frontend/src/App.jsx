@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import PixelCursor from "./components/PixelCursor";
 import HomePage from "./pages/HomePage";
 import RoadmapPage from "./pages/RoadmapPage";
@@ -6,9 +6,11 @@ import LearnPage from "./pages/LearnPage";
 import TestPage from "./pages/TestPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import DashboardPage from "./pages/DashboardPage";
+import AuthPage from "./pages/AuthPage";
+import { AuthProvider } from "./context/AuthContext";
 
-// pages: home | roadmap | learn | test | feedback | finalboss | dashboard
-export default function App() {
+// pages: home | roadmap | learn | test | feedback | dashboard | auth
+function AppContent() {
   const [page, setPage] = useState("home");
   const [character, setCharacter] = useState(null);
   const [chapter, setChapter] = useState(null);
@@ -16,7 +18,11 @@ export default function App() {
   const [testResults, setTestResults] = useState(null);
   const [sectionProgress, setSectionProgress] = useState({});
 
-  const goHome = () => { setPage("home"); setChapter(null); setSection(null); };
+  const goHome = () => {
+    setPage("home");
+    setChapter(null);
+    setSection(null);
+  };
 
   const goRoadmap = () => setPage("roadmap");
 
@@ -73,7 +79,11 @@ export default function App() {
           onSelectCharacter={setCharacter}
           onSelectChapter={handleSelectChapter}
           onDashboard={() => setPage("dashboard")}
+          onGoAuth={() => setPage("auth")}
         />
+      )}
+      {page === "auth" && (
+        <AuthPage onLoginSuccess={() => setPage("home")} />
       )}
       {page === "roadmap" && chapter && character && (
         <RoadmapPage
@@ -114,5 +124,13 @@ export default function App() {
         <DashboardPage onBack={goHome} />
       )}
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

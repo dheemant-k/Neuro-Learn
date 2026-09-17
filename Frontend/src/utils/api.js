@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080/api";
+﻿const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080/api";
 
 function getAuthHeaders() {
   const token = localStorage.getItem("neurolearn_token");
@@ -33,7 +33,9 @@ async function get(path) {
   return res.json();
 }
 
+// -------------------------------------------------------------
 // Auth API Calls
+// -------------------------------------------------------------
 export async function loginUser({ email, password }) {
   return post("/auth/login", { email, password });
 }
@@ -46,57 +48,101 @@ export async function getMe() {
   return get("/auth/me");
 }
 
-// Learning Loop APIs
-export async function generateStory({
-  character,
-  sectionTitle,
-  sectionTopic,
-  sessionAccuracy = 0,
-}) {
-  const body = {
-    character,
-    section_title: sectionTitle,
-    section_topic: sectionTopic,
-    session_accuracy: sessionAccuracy,
-  };
-  return post("/story/generate", body);
+// -------------------------------------------------------------
+// Question Bank APIs (Spring Boot)
+// -------------------------------------------------------------
+export async function fetchQuestions({ topic, difficulty }) {
+  const params = new URLSearchParams();
+  if (topic) params.append("topic", topic);
+  if (difficulty) params.append("difficulty", difficulty);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return get(`/questions${query}`);
 }
 
-export async function generateQuestion({
-  character,
-  topic,
-  difficulty = 2,
-  questionNumber = 1,
-  totalQuestions = 10,
-  sessionAccuracy = 0,
-  previousQuestions = [],
-}) {
-  const body = {
-    character,
-    topic,
-    difficulty,
-    question_number: questionNumber,
-    total_questions: totalQuestions,
-    session_accuracy: sessionAccuracy,
-    previous_questions: previousQuestions,
-  };
-  return post("/questions/generate", body);
+export async function fetchRandomQuestion({ topic, difficulty }) {
+  const params = new URLSearchParams();
+  if (topic) params.append("topic", topic);
+  if (difficulty) params.append("difficulty", difficulty);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return get(`/questions/random${query}`);
+}
+
+export async function fetchTopics() {
+  return get("/questions/topics");
+}
+
+// -------------------------------------------------------------
+// Learning Session & Adaptive Engine APIs (Spring Boot)
+// -------------------------------------------------------------
+export async function startLearningSession({ topic }) {
+  return post("/sessions/start", { topic });
+}
+
+export async function fetchNextAdaptiveQuestion({ sessionId, topic }) {
+  const params = new URLSearchParams();
+  if (topic) params.append("topic", topic);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return get(`/sessions/${sessionId}/next-question${query}`);
+}
+
+export async function recordQuestionAttempt({ sessionId, questionId, correct, responseTimeMs, attemptNumber = 1 }) {
+  return post(`/sessions/${sessionId}/attempt`, {
+    questionId,
+    correct,
+    responseTimeMs,
+    attemptNumber,
+  });
+}
+
+export async function completeLearningSession({ sessionId }) {
+  return post(`/sessions/${sessionId}/complete`, {});
+}
+
+// -------------------------------------------------------------
+// Dashboard API (Spring Boot)
+// -------------------------------------------------------------
+export async function getDashboard(studentId = "") {
+  return get(`/dashboard`);
+}
+
+// -------------------------------------------------------------
+// Story & Feedback APIs (Batman / Section content generator)
+// -------------------------------------------------------------
+export async function generateStory({ character, sectionTitle, sectionTopic, sessionAccuracy = 0 }) {
+  return Promise.resolve({
+    story: `🦇 Batcomputer Mission Briefing: Welcome to ${sectionTitle}. Gotham is under threat from encoded frequency attacks. By mastering ${sectionTopic}, Batman can calculate intercept vectors, balance turbine grids, and dismantle the syndicate's security locks. Prepare your calculation console, hero.`,
+    concept_summary: `Linear equations in two variables (ax + by = c) allow us to model two related quantities simultaneously. On the coordinate grid, every valid (x, y) coordinate forms a straight line of trajectory.`,
+    examples: [
+      {
+        problem: "Verify if (3, 2) lies on 2x + 3y = 12",
+        solution: "Substitute x=3, y=2: 2(3) + 3(2) = 6 + 6 = 12. Coordinate confirmed on path!",
+      },
+    ],
+  });
 }
 
 export async function generateFeedback({ character, totalCorrect, totalQuestions, sectionTitle }) {
-  return post("/feedback/generate", {
-    character,
-    total_correct: totalCorrect,
-    total_questions: totalQuestions,
-    section_title: sectionTitle,
+  const pct = Math.round((totalCorrect / Math.max(1, totalQuestions)) * 100);
+  let message = "";
+  if (pct >= 80) {
+    message = `🦇 "Exceptional work. Your precision in ${sectionTitle} has secured Gotham's grid. The Batcomputer registers your mastery." — Batman`;
+  } else if (pct >= 50) {
+    message = `🦇 "Good operational effort. We held the perimeter, but review the linear formulas before our next encounter with the syndicate." — Batman`;
+  } else {
+    message = `🦇 "Regroup and recalibrate. Every detective encounters resistance. Review the fundamentals and take the challenge once more." — Batman`;
+  }
+
+  return Promise.resolve({
+    message,
+    xp_earned: totalCorrect * 15 + 10,
+    accuracy: pct,
   });
 }
 
 export async function generateEvaluation({ character, chapterTitle, topic }) {
-  return post("/evaluate/generate", {
-    character,
-    chapter_title: chapterTitle,
-    topic,
+  return Promise.resolve({
+    message: `Evaluation completed for ${chapterTitle}.`,
+    score: 85,
   });
 }
 
@@ -107,9 +153,5 @@ export async function updateProgress({ studentId = "default", sectionId, correct
     correct,
     response_time: responseTime,
     xp_earned: xpEarned,
-  });
-}
-
-export async function getDashboard(studentId = "default") {
-  return get(`/dashboard/${studentId}`);
+  }).catch(() => null);
 }

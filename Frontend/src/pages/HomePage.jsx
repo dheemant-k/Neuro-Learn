@@ -1,10 +1,12 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { chapters, characters } from "../data/chapters";
 import bg from "../assets/bg.gif";
 import PixelFooter from "../components/PixelFooter";
+import { useAuth } from "../context/AuthContext";
 
-export default function HomePage({ selectedCharacter, onSelectCharacter, onSelectChapter, onDashboard }) {
+export default function HomePage({ selectedCharacter, onSelectCharacter, onSelectChapter, onDashboard, onGoAuth }) {
   const [charPick, setCharPick] = useState(selectedCharacter?.id || null);
+  const { user, isAuthenticated, logout } = useAuth();
 
   const handleStart = (chapter) => {
     if (!charPick) return;
@@ -23,8 +25,37 @@ export default function HomePage({ selectedCharacter, onSelectCharacter, onSelec
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(15,23,42,0.35)_0%,rgba(30,41,59,0.45)_50%,rgba(15,23,42,0.85)_100%)]" />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(900px_420px_at_50%_20%,rgba(94,234,212,0.12),transparent_55%)]" />
 
+        {/* Top Navbar */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex justify-between items-center px-6 py-4 max-w-6xl mx-auto">
+          <div className="text-xs tracking-[0.25em] text-[rgb(94,234,212)] font-semibold pixel">
+            NEUROLEARN
+          </div>
+          <div className="flex items-center gap-3">
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3 bg-slate-900/80 border border-slate-700/80 px-4 py-2 rounded-2xl backdrop-blur-sm">
+                <span className="text-xs text-slate-300">
+                  <span className="text-[rgb(94,234,212)] font-semibold">{user?.name}</span> ({user?.role})
+                </span>
+                <button
+                  onClick={logout}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onGoAuth}
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-[rgba(94,234,212,0.6)] bg-[rgba(94,234,212,0.1)] text-[rgb(94,234,212)] hover:bg-[rgba(94,234,212,0.2)] transition shadow-sm"
+              >
+                Sign In / Register →
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="absolute top-0 left-0 right-0 min-h-[90vh] flex items-center z-10">
-          <div className="relative max-w-6xl mx-auto px-6 w-full">
+          <div className="relative max-w-6xl mx-auto px-6 w-full pt-16">
             <div className="max-w-2xl">
               <div className="text-xs tracking-[0.35em] text-slate-200/80">
                 NEUROLEARN • ADAPTIVE LEARNING

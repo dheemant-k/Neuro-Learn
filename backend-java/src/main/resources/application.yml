@@ -5,7 +5,7 @@ spring:
   application:
     name: backend-java
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:neurolearn}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:neurolearn}
     username: ${DB_USER:neurolearn}
     password: ${DB_PASSWORD:neurolearn}
     driver-class-name: org.postgresql.Driver
