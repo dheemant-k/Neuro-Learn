@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { getDashboard } from "../utils/api";
 import { chapters } from "../data/chapters";
 
@@ -50,35 +50,64 @@ export default function DashboardPage({ onBack }) {
           <>
             {/* Overview cards */}
             <div className="pixel-heading text-2xl">Student Overview</div>
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
               <StatCard label="Total XP" value={data.total_xp} color="text-[rgb(250,204,21)]" />
               <StatCard label="Level" value={data.level} color="text-[rgb(56,189,248)]" />
               <StatCard label="Questions" value={`${data.total_correct}/${data.total_answered}`} color="text-[rgb(94,234,212)]" />
-              <StatCard label="Accuracy" value={`${data.overall_accuracy}%`} color="text-white" />
+              <StatCard label="Raw Accuracy" value={`${data.overall_accuracy}%`} color="text-white" />
+              <StatCard 
+                label="Bayesian P(L)" 
+                value={`${Math.round((data.overall_p_know !== undefined ? data.overall_p_know : 0.20) * 100)}%`} 
+                color="text-indigo-400" 
+              />
             </div>
 
             {/* Section breakdown */}
             <div className="mt-10">
-              <div className="pixel-heading text-xl">Section Performance</div>
+              <div className="pixel-heading text-xl">Bayesian Section Mastery Breakdown</div>
               <div className="mt-4 space-y-4">
-                {data.sections.map((sec) => (
-                  <div key={sec.section_id} className="rounded-2xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(15,23,42,0.72)] p-5">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <div className="font-semibold">{sectionTitleMap[sec.section_id] || sec.section_id}</div>
-                        <div className="text-sm text-slate-300/80 mt-1">
-                          {sec.correct}/{sec.answered} correct • Best streak: {sec.best_streak}
+                {data.sections.map((sec) => {
+                  const bktPct = Math.round((sec.p_know !== undefined ? sec.p_know : 0.20) * 100);
+                  const isMastered = sec.is_mastered || bktPct >= 85;
+
+                  return (
+                    <div key={sec.section_id} className="rounded-2xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(15,23,42,0.72)] p-5">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-lg">{sectionTitleMap[sec.section_id] || sec.section_id}</span>
+                            {isMastered && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                Mastered 🏆
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-slate-300/80 mt-1">
+                            {sec.correct}/{sec.answered} correct • Raw Accuracy: {sec.accuracy}%
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-slate-400">Bayesian Knowledge State</div>
+                          <div className="text-2xl font-bold text-sky-400">{bktPct}% <span className="text-xs font-normal text-slate-400">P(L)</span></div>
                         </div>
                       </div>
-                      <div className="text-2xl font-bold text-[rgb(94,234,212)]">{sec.accuracy}%</div>
-                    </div>
 
-                    {/* Accuracy bar */}
-                    <div className="mt-3 h-2 w-full rounded-full bg-[rgba(255,255,255,0.08)] overflow-hidden">
-                      <div className="h-2 bg-gradient-to-r from-[rgb(56,189,248)] to-[rgb(94,234,212)] transition-all" style={{ width: `${sec.accuracy}%` }} />
+                      {/* Bayesian Knowledge Bar */}
+                      <div className="mt-3">
+                        <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                          <span>Latent Skill Probability</span>
+                          <span>{bktPct}% / 100%</span>
+                        </div>
+                        <div className="h-2.5 w-full rounded-full bg-slate-800/80 overflow-hidden border border-slate-700/50">
+                          <div 
+                            className="h-full bg-gradient-to-r from-teal-400 via-sky-400 to-indigo-500 transition-all duration-500" 
+                            style={{ width: `${Math.max(5, bktPct)}%` }} 
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

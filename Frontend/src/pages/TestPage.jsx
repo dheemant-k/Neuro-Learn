@@ -10,9 +10,11 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   const TOTAL = 5; // 5 adaptive questions per mission quest
   const [qIndex, setQIndex] = useState(0);
   const [currentQ, setCurrentQ] = useState(null);
+  const [shuffledOptions, setShuffledOptions] = useState([]);
   const [adaptiveInfo, setAdaptiveInfo] = useState(null);
+  const [bktUpdate, setBktUpdate] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState(null); // 0, 1, 2, 3
+  const [selected, setSelected] = useState(null); // index in shuffledOptions
   const [locked, setLocked] = useState(false);
   const [showExplain, setShowExplain] = useState(false);
 
@@ -21,6 +23,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [streak, setStreak] = useState(0);
   const [xpGained, setXpGained] = useState(0);
+  const [currentPKnow, setCurrentPKnow] = useState(0.20);
 
   // Typewriter
   const [typed, setTyped] = useState("");
@@ -41,6 +44,38 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     }, 12);
   };
 
+  const displayQuestion = (q, adaptiveData) => {
+    setCurrentQ(q);
+    setSelected(null);
+    setLocked(false);
+    setShowExplain(false);
+    setBktUpdate(null);
+
+    // Shuffle options dynamically so option A is not always in the first button slot
+    const raw = [
+      { key: "A", text: q.optionA },
+      { key: "B", text: q.optionB },
+      { key: "C", text: q.optionC },
+      { key: "D", text: q.optionD },
+    ];
+    // Fisher-Yates shuffle
+    const shuffled = [...raw];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    setShuffledOptions(shuffled);
+
+    if (adaptiveData?.pknow !== undefined) {
+      setCurrentPKnow(adaptiveData.pknow);
+    } else if (adaptiveData?.pKnow !== undefined) {
+      setCurrentPKnow(adaptiveData.pKnow);
+    }
+
+    startRef.current = Date.now();
+    startTypewriter(q.questionText || "");
+  };
+
   // 1. Initialize session on mount
   useEffect(() => {
     let mounted = true;
@@ -56,7 +91,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
         const adaptiveRes = await fetchNextAdaptiveQuestion({ sessionId: sId, topic: section.id });
         if (mounted && adaptiveRes?.question) {
           setAdaptiveInfo(adaptiveRes);
-          displayQuestion(adaptiveRes.question);
+          displayQuestion(adaptiveRes.question, adaptiveRes);
         } else if (mounted) {
           // Fallback
           const fallback = {
@@ -71,7 +106,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
             correctAnswer: "A",
             explanation: "3x = 15 => x = 5.",
           };
-          displayQuestion(fallback);
+          displayQuestion(fallback, null);
         }
       } catch (err) {
         console.error("Failed to init session:", err);
@@ -88,30 +123,13 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     };
   }, [section.id]);
 
-  const displayQuestion = (q) => {
-    setCurrentQ(q);
-    setSelected(null);
-    setLocked(false);
-    setShowExplain(false);
-    startRef.current = Date.now();
-    startTypewriter(q.questionText || "");
-  };
-
-  const getCorrectIndex = (letter) => {
-    if (!letter) return 0;
-    const clean = letter.trim().toUpperCase();
-    if (clean === "B") return 1;
-    if (clean === "C") return 2;
-    if (clean === "D") return 3;
-    return 0;
-  };
-
   const submit = async () => {
-    if (!currentQ || selected === null || locked) return;
+    if (!currentQ || selected === null || locked || shuffledOptions.length === 0) return;
 
     const responseTimeMs = Date.now() - startRef.current;
-    const correctIdx = getCorrectIndex(currentQ.correctAnswer);
-    const isCorrect = selected === correctIdx;
+    const chosenKey = shuffledOptions[selected]?.key;
+    const correctKey = (currentQ.correctAnswer || "A").trim().toUpperCase();
+    const isCorrect = chosenKey === correctKey;
 
     setLocked(true);
     setShowExplain(true);
@@ -125,15 +143,24 @@ export default function TestPage({ section, character, onFinish, onBack }) {
       setXpGained((x) => x + 5);
     }
 
-    // Persist attempt to backend
+    // Persist attempt to backend and capture Bayesian Knowledge Tracing update
     if (sessionId && currentQ.id) {
-      recordQuestionAttempt({
-        sessionId,
-        questionId: currentQ.id,
-        correct: isCorrect,
-        responseTimeMs,
-        attemptNumber: 1,
-      }).catch((err) => console.warn("Failed recording attempt:", err));
+      try {
+        const attemptRes = await recordQuestionAttempt({
+          sessionId,
+          questionId: currentQ.id,
+          correct: isCorrect,
+          responseTimeMs,
+          attemptNumber: 1,
+        });
+        if (attemptRes) {
+          setBktUpdate(attemptRes);
+          if (attemptRes.pknow !== undefined) setCurrentPKnow(attemptRes.pknow);
+          else if (attemptRes.pKnow !== undefined) setCurrentPKnow(attemptRes.pKnow);
+        }
+      } catch (err) {
+        console.warn("Failed recording attempt:", err);
+      }
     }
   };
 
@@ -154,11 +181,11 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     setQIndex(nextIdx);
 
     try {
-      // Pull next dynamically adapted question from the Adaptive Engine!
+      // Pull next dynamically adapted question from Bayesian Adaptive Engine!
       const adaptiveRes = await fetchNextAdaptiveQuestion({ sessionId: sessionId || 1, topic: section.id });
       if (adaptiveRes?.question) {
         setAdaptiveInfo(adaptiveRes);
-        displayQuestion(adaptiveRes.question);
+        displayQuestion(adaptiveRes.question, adaptiveRes);
       }
     } catch (err) {
       console.warn("Failed loading next question:", err);
@@ -168,20 +195,26 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   };
 
   const optionStyle = (idx) => {
-    const correctIdx = getCorrectIndex(currentQ?.correctAnswer);
+    const chosenKey = shuffledOptions[idx]?.key;
+    const correctKey = (currentQ?.correctAnswer || "A").trim().toUpperCase();
+
     if (!locked) {
       return idx === selected
         ? "border-[rgba(56,189,248,0.75)] bg-[rgba(56,189,248,0.15)] ring-1 ring-[rgb(56,189,248)]"
         : "border-[rgba(48,68,105,0.9)] bg-[rgba(10,20,44,0.65)] hover:bg-[rgba(13,26,58,0.85)]";
     }
-    if (idx === correctIdx) return "border-[rgba(52,211,153,0.85)] bg-[rgba(52,211,153,0.15)] ring-1 ring-[rgb(52,211,153)]";
-    if (idx === selected && selected !== correctIdx) return "border-[rgba(251,113,133,0.85)] bg-[rgba(251,113,133,0.15)] ring-1 ring-[rgb(251,113,133)]";
+    if (chosenKey === correctKey) {
+      return "border-[rgba(52,211,153,0.85)] bg-[rgba(52,211,153,0.15)] ring-1 ring-[rgb(52,211,153)]";
+    }
+    if (idx === selected && chosenKey !== correctKey) {
+      return "border-[rgba(251,113,133,0.85)] bg-[rgba(251,113,133,0.15)] ring-1 ring-[rgb(251,113,133)]";
+    }
     return "border-[rgba(48,68,105,0.7)] bg-[rgba(10,20,44,0.50)] opacity-70";
   };
 
-  const options = currentQ
-    ? [currentQ.optionA, currentQ.optionB, currentQ.optionC, currentQ.optionD]
-    : [];
+  const pKnowPercent = Math.round(currentPKnow * 100);
+  const correctKey = (currentQ?.correctAnswer || "A").trim().toUpperCase();
+  const selectedKey = selected !== null ? shuffledOptions[selected]?.key : null;
 
   return (
     <div className="min-h-screen text-slate-100">
@@ -215,13 +248,45 @@ export default function TestPage({ section, character, onFinish, onBack }) {
           />
         </div>
 
-        {/* Adaptive Engine Decision Badge */}
-        {adaptiveInfo?.adaptiveReason && (
-          <div className="mt-4 p-3 rounded-2xl border border-[rgb(94,234,212)]/40 bg-[rgb(94,234,212)]/10 text-[rgb(94,234,212)] text-xs flex items-center gap-2">
-            <span className="font-bold">🧠 AI Adaptive Engine:</span>
-            <span>{adaptiveInfo.adaptiveReason}</span>
+        {/* Bayesian Knowledge Tracing (BKT) HUD */}
+        <div className="mt-4 p-4 rounded-2xl border border-[rgba(56,189,248,0.4)] bg-[rgba(15,23,42,0.85)] shadow-lg backdrop-blur-md">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🧠</span>
+              <span className="text-xs font-bold tracking-wider text-[rgb(94,234,212)] uppercase pixel">
+                Bayesian Knowledge Model
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-300">
+                Latent Skill Mastery: <span className="font-bold text-[rgb(56,189,248)]">{pKnowPercent}%</span>
+              </span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                pKnowPercent >= 85 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                : pKnowPercent >= 40 ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
+                : "bg-slate-500/20 text-slate-300 border border-slate-500/40"
+              }`}>
+                {pKnowPercent >= 85 ? "Mastered 🏆" : pKnowPercent >= 40 ? "Application ⚙️" : "Foundation 🔬"}
+              </span>
+            </div>
           </div>
-        )}
+
+          {/* BKT Probability Meter Bar */}
+          <div className="mt-2.5 h-2 w-full rounded-full bg-slate-800/80 overflow-hidden border border-slate-700/50">
+            <div
+              className="h-full bg-gradient-to-r from-teal-400 via-sky-400 to-indigo-400 transition-all duration-500"
+              style={{ width: `${Math.max(5, pKnowPercent)}%` }}
+            />
+          </div>
+
+          {/* Explainable Decision string */}
+          {adaptiveInfo?.adaptiveReason && (
+            <div className="mt-2.5 text-xs text-slate-300/90 flex items-start gap-1.5 leading-relaxed">
+              <span className="text-[rgb(94,234,212)] font-semibold shrink-0">Adaptive Rationale:</span>
+              <span>{adaptiveInfo.adaptiveReason}</span>
+            </div>
+          )}
+        </div>
 
         <div className="mt-6">
           <div className="rounded-3xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(10,20,44,0.75)] shadow-xl overflow-hidden backdrop-blur-md">
@@ -244,7 +309,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
             <div className="p-6 md:p-8">
               {loading ? (
                 <div className="py-12 text-center">
-                  <div className="pixel-heading text-lg text-[rgb(94,234,212)]">Adaptive Engine Analyzing Performance...</div>
+                  <div className="pixel-heading text-lg text-[rgb(94,234,212)]">Bayesian Engine Calculating Next Challenge...</div>
                   <div className="mt-4 h-2 max-w-xs mx-auto rounded-full bg-[rgba(255,255,255,0.08)] overflow-hidden">
                     <div className="h-2 w-1/3 bg-[rgb(56,189,248)] animate-pulse" />
                   </div>
@@ -259,9 +324,9 @@ export default function TestPage({ section, character, onFinish, onBack }) {
                     )}
                   </div>
 
-                  {/* Options */}
+                  {/* Shuffled Options */}
                   <div className="mt-6 grid grid-cols-1 gap-3">
-                    {options.map((opt, idx) => (
+                    {shuffledOptions.map((optObj, idx) => (
                       <button
                         key={idx}
                         onClick={() => !locked && setSelected(idx)}
@@ -271,7 +336,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
                           <div className="h-9 w-9 rounded-xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(13,26,58,0.55)] flex items-center justify-center text-sm font-bold shrink-0">
                             {String.fromCharCode(65 + idx)}
                           </div>
-                          <div className="text-base text-slate-100 leading-relaxed pt-1">{opt}</div>
+                          <div className="text-base text-slate-100 leading-relaxed pt-1">{optObj.text}</div>
                         </div>
                       </button>
                     ))}
@@ -297,17 +362,28 @@ export default function TestPage({ section, character, onFinish, onBack }) {
                     )}
                   </div>
 
+                  {/* Bayesian Probability Shift Breakdown */}
+                  {bktUpdate?.bktExplanation && (
+                    <div className="mt-5 p-3.5 rounded-2xl border border-indigo-500/40 bg-indigo-950/30 text-indigo-200 text-xs">
+                      <div className="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                        <span>📊</span>
+                        <span>Bayesian Inference Update:</span>
+                      </div>
+                      <div className="leading-relaxed">{bktUpdate.bktExplanation}</div>
+                    </div>
+                  )}
+
                   {/* Step-by-Step Explanation */}
                   {showExplain && (
-                    <div className="mt-6 rounded-2xl border-2 border-[rgba(56,189,248,0.35)] bg-[rgba(56,189,248,0.08)] p-5 animate-fadeIn">
+                    <div className="mt-5 rounded-2xl border-2 border-[rgba(56,189,248,0.35)] bg-[rgba(56,189,248,0.08)] p-5 animate-fadeIn">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-base">
-                          {selected === getCorrectIndex(currentQ?.correctAnswer)
+                          {selectedKey === correctKey
                             ? "✅ Correct! Batcomputer Confirmed."
                             : "❌ Incorrect Calculation."}
                         </span>
                         <span className="text-sm text-slate-300">
-                          (Correct Answer: Option {currentQ?.correctAnswer})
+                          (Expected: {shuffledOptions.find(o => o.key === correctKey)?.text || correctKey})
                         </span>
                       </div>
                       <div className="mt-3 text-sm text-slate-200/90 leading-relaxed whitespace-pre-line border-t border-slate-700/50 pt-3">

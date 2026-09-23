@@ -9,10 +9,17 @@ public class QuestionAttemptResponse {
     private Integer xpEarned;
     private Integer totalXp;
     private Integer currentLevel;
+    private Double pKnow;
+    private Boolean isMastered;
+    private String bktExplanation;
 
     public QuestionAttemptResponse() {}
 
     public QuestionAttemptResponse(Long id, Long sessionId, Long questionId, Boolean correct, Long responseTimeMs, Integer xpEarned, Integer totalXp, Integer currentLevel) {
+        this(id, sessionId, questionId, correct, responseTimeMs, xpEarned, totalXp, currentLevel, 0.20, false, "");
+    }
+
+    public QuestionAttemptResponse(Long id, Long sessionId, Long questionId, Boolean correct, Long responseTimeMs, Integer xpEarned, Integer totalXp, Integer currentLevel, Double pKnow, Boolean isMastered, String bktExplanation) {
         this.id = id;
         this.sessionId = sessionId;
         this.questionId = questionId;
@@ -21,6 +28,9 @@ public class QuestionAttemptResponse {
         this.xpEarned = xpEarned;
         this.totalXp = totalXp;
         this.currentLevel = currentLevel;
+        this.pKnow = pKnow;
+        this.isMastered = isMastered;
+        this.bktExplanation = bktExplanation;
     }
 
     public Long getId() { return id; }
@@ -46,4 +56,13 @@ public class QuestionAttemptResponse {
 
     public Integer getCurrentLevel() { return currentLevel; }
     public void setCurrentLevel(Integer currentLevel) { this.currentLevel = currentLevel; }
+
+    public Double getPKnow() { return pKnow; }
+    public void setPKnow(Double pKnow) { this.pKnow = pKnow; }
+
+    public Boolean getIsMastered() { return isMastered; }
+    public void setIsMastered(Boolean isMastered) { this.isMastered = isMastered; }
+
+    public String getBktExplanation() { return bktExplanation; }
+    public void setBktExplanation(String bktExplanation) { this.bktExplanation = bktExplanation; }
 }

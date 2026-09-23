@@ -2,7 +2,7 @@ package com.neurolearn.service;
 
 import com.neurolearn.adaptive.AdaptiveDecision;
 import com.neurolearn.adaptive.AdaptiveEngineService;
-import com.neurolearn.adaptive.PerformanceSnapshot;
+import com.neurolearn.adaptive.BktUpdateResult;
 import com.neurolearn.dto.*;
 import com.neurolearn.entity.*;
 import com.neurolearn.repository.*;
@@ -48,7 +48,7 @@ public class LearningSessionService {
 
         return profileRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
-                    StudentProfile newProfile = new StudentProfile(null, user, 1, 0.0, 0);
+                    StudentProfile newProfile = new StudentProfile(null, user, 1, 0.0, 0, 0.20);
                     return profileRepository.save(newProfile);
                 });
     }
@@ -79,35 +79,13 @@ public class LearningSessionService {
         LearningSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
 
+        StudentProfile profile = session.getStudentProfile();
         List<QuestionAttempt> sessionAttempts = attemptRepository.findBySessionId(sessionId);
         Set<Long> attemptedIds = sessionAttempts.stream()
                 .map(a -> a.getQuestion().getId())
                 .collect(Collectors.toSet());
 
-        // Calculate performance snapshot
-        int streakCorrect = 0;
-        int streakIncorrect = 0;
-        long totalRt = 0;
         int count = sessionAttempts.size();
-
-        for (int i = sessionAttempts.size() - 1; i >= 0; i--) {
-            boolean correct = sessionAttempts.get(i).getCorrect();
-            if (correct && streakIncorrect == 0) {
-                streakCorrect++;
-            } else if (!correct && streakCorrect == 0) {
-                streakIncorrect++;
-            } else {
-                break;
-            }
-        }
-
-        for (QuestionAttempt qa : sessionAttempts) {
-            totalRt += (qa.getResponseTimeMs() != null ? qa.getResponseTimeMs() : 5000L);
-        }
-        double avgRt = count > 0 ? (double) totalRt / count : 8000.0;
-
-        int correctCount = (int) sessionAttempts.stream().filter(QuestionAttempt::getCorrect).count();
-        double recentAcc = count > 0 ? (double) correctCount / count : 1.0;
 
         // Current difficulty determination
         int lastDifficulty = 1;
@@ -115,20 +93,15 @@ public class LearningSessionService {
             lastDifficulty = sessionAttempts.get(sessionAttempts.size() - 1).getQuestion().getDifficulty();
         }
 
-        PerformanceSnapshot snapshot = new PerformanceSnapshot(
-                recentAcc,
-                session.getStudentProfile().getOverallAccuracy() != null ? session.getStudentProfile().getOverallAccuracy() / 100.0 : 0.0,
-                avgRt,
-                streakCorrect,
-                streakIncorrect,
-                lastDifficulty,
-                0.5
-        );
+        // Fetch current Bayesian knowledge belief P(L) for this student & topic
+        TopicProgress tp = topicProgressRepository.findByStudentProfileIdAndTopic(profile.getId(), topic).orElse(null);
+        double currentPKnow = (tp != null && tp.getPKnow() != null) ? tp.getPKnow() : 0.20;
 
-        AdaptiveDecision decision = adaptiveEngineService.evaluate(snapshot);
+        // Evaluate next question difficulty via Bayesian Knowledge Tracing
+        AdaptiveDecision decision = adaptiveEngineService.evaluateBkt(currentPKnow, lastDifficulty, count);
         int targetDifficulty = decision.nextDifficulty();
 
-        // Find question with targetDifficulty, excluding already answered
+        // Find questions with targetDifficulty, excluding already answered in this session
         List<Question> candidates = questionRepository.findByTopicAndDifficulty(topic, targetDifficulty);
         List<Question> unattempted = candidates.stream()
                 .filter(q -> !attemptedIds.contains(q.getId()))
@@ -156,7 +129,10 @@ public class LearningSessionService {
                 targetDifficulty,
                 decision.action().name(),
                 decision.reason(),
-                count + 1
+                count + 1,
+                decision.pKnow(),
+                decision.predictedCorrectProb(),
+                decision.isMastered()
         );
     }
 
@@ -179,15 +155,13 @@ public class LearningSessionService {
         attempt.setTimestamp(OffsetDateTime.now());
         QuestionAttempt savedAttempt = attemptRepository.save(attempt);
 
-        session.setQuestionsAttempted(session.getQuestionsAttempted() + 1);
-        sessionRepository.save(session);
-
+        // XP Award
         int xpEarned = Boolean.TRUE.equals(request.getCorrect()) ? 15 : 5;
-        profile.setTotalXp((profile.getTotalXp() != null ? profile.getTotalXp() : 0) + xpEarned);
-        int newLevel = (profile.getTotalXp() / 100) + 1;
-        profile.setCurrentLevel(newLevel);
-        profileRepository.save(profile);
+        int newXp = (profile.getTotalXp() != null ? profile.getTotalXp() : 0) + xpEarned;
+        profile.setTotalXp(newXp);
+        profile.setCurrentLevel((newXp / 100) + 1);
 
+        // Bayesian Knowledge Tracing (BKT) Update
         TopicProgress tp = topicProgressRepository.findByStudentProfileIdAndTopic(profile.getId(), question.getTopic())
                 .orElseGet(() -> {
                     TopicProgress newTp = new TopicProgress();
@@ -196,16 +170,23 @@ public class LearningSessionService {
                     newTp.setAttempts(0);
                     newTp.setCorrectCount(0);
                     newTp.setMasteryScore(0.0);
+                    newTp.setPKnow(0.20);
                     return newTp;
                 });
+
+        double priorPKnow = tp.getPKnow() != null ? tp.getPKnow() : 0.20;
+        BktUpdateResult bktResult = adaptiveEngineService.updateKnowledge(priorPKnow, Boolean.TRUE.equals(request.getCorrect()));
 
         tp.setAttempts(tp.getAttempts() + 1);
         if (Boolean.TRUE.equals(request.getCorrect())) {
             tp.setCorrectCount(tp.getCorrectCount() + 1);
         }
-        double topicMastery = tp.getAttempts() > 0 ? ((double) tp.getCorrectCount() / tp.getAttempts()) * 100.0 : 0.0;
-        tp.setMasteryScore(Math.round(topicMastery * 10.0) / 10.0);
+        tp.setPKnow(bktResult.updatedPKnow());
+        tp.setMasteryScore(Math.round(bktResult.updatedPKnow() * 1000.0) / 10.0);
         topicProgressRepository.save(tp);
+
+        profile.setPKnow(bktResult.updatedPKnow());
+        profileRepository.save(profile);
 
         return new QuestionAttemptResponse(
                 savedAttempt.getId(),
@@ -215,7 +196,10 @@ public class LearningSessionService {
                 savedAttempt.getResponseTimeMs(),
                 xpEarned,
                 profile.getTotalXp(),
-                profile.getCurrentLevel()
+                profile.getCurrentLevel(),
+                bktResult.updatedPKnow(),
+                bktResult.isMastered(),
+                bktResult.explanation()
         );
     }
 

@@ -45,7 +45,7 @@ public class DashboardService {
         }
 
         if (profile == null) {
-            return new DashboardResponse(0, 1, 0, 0, 0.0, Collections.emptyList(), Collections.emptyList());
+            return new DashboardResponse(0, 1, 0, 0, 0.0, 0.20, Collections.emptyList(), Collections.emptyList());
         }
 
         List<QuestionAttempt> attempts = attemptRepository.findByStudentProfileIdOrderByTimestampDesc(profile.getId());
@@ -56,13 +56,22 @@ public class DashboardService {
         // Section breakdown from TopicProgress
         List<TopicProgress> topicProgressList = topicProgressRepository.findByStudentProfileId(profile.getId());
         List<DashboardResponse.SectionStat> sections = new ArrayList<>();
+        double totalPKnow = 0.0;
 
         for (TopicProgress tp : topicProgressList) {
             int ans = tp.getAttempts() != null ? tp.getAttempts() : 0;
             int cor = tp.getCorrectCount() != null ? tp.getCorrectCount() : 0;
             double acc = ans > 0 ? Math.round(((double) cor / ans) * 1000.0) / 10.0 : 0.0;
-            sections.add(new DashboardResponse.SectionStat(tp.getTopic(), ans, cor, acc, 0));
+            double pKnow = tp.getPKnow() != null ? tp.getPKnow() : 0.20;
+            totalPKnow += pKnow;
+            boolean isMastered = pKnow >= 0.85;
+
+            sections.add(new DashboardResponse.SectionStat(tp.getTopic(), ans, cor, acc, 0, Math.round(pKnow * 100.0) / 100.0, isMastered));
         }
+
+        double overallPKnow = topicProgressList.isEmpty() 
+                ? (profile.getPKnow() != null ? profile.getPKnow() : 0.20)
+                : Math.round((totalPKnow / topicProgressList.size()) * 100.0) / 100.0;
 
         // Recent history (last 10)
         List<DashboardResponse.HistoryItem> recentHistory = attempts.stream()
@@ -80,6 +89,7 @@ public class DashboardService {
                 totalAnswered,
                 totalCorrect,
                 accuracy,
+                overallPKnow,
                 sections,
                 recentHistory
         );

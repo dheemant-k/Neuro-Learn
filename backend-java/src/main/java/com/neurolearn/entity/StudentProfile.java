@@ -23,6 +23,9 @@ public class StudentProfile {
     @Column(name = "total_xp")
     private Integer totalXp = 0;
 
+    @Column(name = "p_know")
+    private Double pKnow = 0.20;
+
     public StudentProfile() {
     }
 
@@ -32,6 +35,16 @@ public class StudentProfile {
         this.currentLevel = currentLevel != null ? currentLevel : 1;
         this.overallAccuracy = overallAccuracy != null ? overallAccuracy : 0.0;
         this.totalXp = totalXp != null ? totalXp : 0;
+        this.pKnow = 0.20;
+    }
+
+    public StudentProfile(Long id, User user, Integer currentLevel, Double overallAccuracy, Integer totalXp, Double pKnow) {
+        this.id = id;
+        this.user = user;
+        this.currentLevel = currentLevel != null ? currentLevel : 1;
+        this.overallAccuracy = overallAccuracy != null ? overallAccuracy : 0.0;
+        this.totalXp = totalXp != null ? totalXp : 0;
+        this.pKnow = pKnow != null ? pKnow : 0.20;
     }
 
     public Long getId() {
@@ -72,5 +85,13 @@ public class StudentProfile {
 
     public void setTotalXp(Integer totalXp) {
         this.totalXp = totalXp;
+    }
+
+    public Double getPKnow() {
+        return pKnow;
+    }
+
+    public void setPKnow(Double pKnow) {
+        this.pKnow = pKnow;
     }
 }

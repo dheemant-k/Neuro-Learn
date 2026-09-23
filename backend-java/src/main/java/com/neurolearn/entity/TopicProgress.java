@@ -22,6 +22,9 @@ public class TopicProgress {
     @Column(name = "mastery_score")
     private Double masteryScore = 0.0;
 
+    @Column(name = "p_know")
+    private Double pKnow = 0.20;
+
     private Integer attempts = 0;
 
     @Column(name = "correct_count")
@@ -30,11 +33,12 @@ public class TopicProgress {
     public TopicProgress() {
     }
 
-    public TopicProgress(Long id, StudentProfile studentProfile, String topic, Double masteryScore, Integer attempts, Integer correctCount) {
+    public TopicProgress(Long id, StudentProfile studentProfile, String topic, Double masteryScore, Double pKnow, Integer attempts, Integer correctCount) {
         this.id = id;
         this.studentProfile = studentProfile;
         this.topic = topic;
         this.masteryScore = masteryScore != null ? masteryScore : 0.0;
+        this.pKnow = pKnow != null ? pKnow : 0.20;
         this.attempts = attempts != null ? attempts : 0;
         this.correctCount = correctCount != null ? correctCount : 0;
     }
@@ -69,6 +73,14 @@ public class TopicProgress {
 
     public void setMasteryScore(Double masteryScore) {
         this.masteryScore = masteryScore;
+    }
+
+    public Double getPKnow() {
+        return pKnow;
+    }
+
+    public void setPKnow(Double pKnow) {
+        this.pKnow = pKnow;
     }
 
     public Integer getAttempts() {
