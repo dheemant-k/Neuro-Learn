@@ -1,4 +1,4 @@
-﻿const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080/api";
+const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080/api";
 
 function getAuthHeaders() {
   const token = localStorage.getItem("neurolearn_token");
@@ -96,6 +96,17 @@ export async function recordQuestionAttempt({ sessionId, questionId, correct, re
 
 export async function completeLearningSession({ sessionId }) {
   return post(`/sessions/${sessionId}/complete`, {});
+}
+
+// -------------------------------------------------------------
+// Progress & Curriculum Roadmap APIs (Spring Boot)
+// -------------------------------------------------------------
+export async function fetchProgress() {
+  return get("/progress");
+}
+
+export async function claimBossVictory() {
+  return post("/progress/boss-victory", {});
 }
 
 // -------------------------------------------------------------

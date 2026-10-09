@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import PixelCursor from "./components/PixelCursor";
 import HomePage from "./pages/HomePage";
 import RoadmapPage from "./pages/RoadmapPage";
@@ -7,16 +7,16 @@ import TestPage from "./pages/TestPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import DashboardPage from "./pages/DashboardPage";
 import AuthPage from "./pages/AuthPage";
+import BossFightPage from "./pages/BossFightPage";
 import { AuthProvider } from "./context/AuthContext";
 
-// pages: home | roadmap | learn | test | feedback | dashboard | auth
+// pages: home | roadmap | learn | test | feedback | dashboard | auth | boss
 function AppContent() {
   const [page, setPage] = useState("home");
   const [character, setCharacter] = useState(null);
   const [chapter, setChapter] = useState(null);
   const [section, setSection] = useState(null);
   const [testResults, setTestResults] = useState(null);
-  const [sectionProgress, setSectionProgress] = useState({});
 
   const goHome = () => {
     setPage("home");
@@ -43,31 +43,11 @@ function AppContent() {
 
   const handleTestFinish = (results) => {
     setTestResults(results);
-    // Update local section progress
-    if (section) {
-      setSectionProgress((prev) => {
-        const old = prev[section.id] || { answered: 0, correct: 0 };
-        return {
-          ...prev,
-          [section.id]: {
-            answered: old.answered + results.totalQuestions,
-            correct: old.correct + results.totalCorrect,
-          },
-        };
-      });
-    }
     setPage("feedback");
   };
 
   const handleFinalBoss = () => {
-    // Reuse test page with final boss section
-    setSection({
-      id: "final_boss",
-      title: chapter?.finalBoss?.title || "Final Challenge",
-      topic: chapter?.topic || "linear equations in two variables",
-      description: "Mastery evaluation",
-    });
-    setPage("test");
+    setPage("boss");
   };
 
   return (
@@ -89,7 +69,6 @@ function AppContent() {
         <RoadmapPage
           chapter={chapter}
           character={character}
-          sectionProgress={sectionProgress}
           onLearn={handleLearn}
           onTest={handleTest}
           onFinalBoss={handleFinalBoss}
@@ -118,6 +97,14 @@ function AppContent() {
           character={character}
           results={testResults}
           onContinue={goRoadmap}
+        />
+      )}
+      {page === "boss" && character && (
+        <BossFightPage
+          character={character}
+          onVictory={goRoadmap}
+          onDefeat={goRoadmap}
+          onBack={goRoadmap}
         />
       )}
       {page === "dashboard" && (
