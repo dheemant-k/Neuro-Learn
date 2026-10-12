@@ -117,6 +117,32 @@ export async function getDashboard(studentId = "") {
 }
 
 // -------------------------------------------------------------
+// Teacher Analytics APIs
+// -------------------------------------------------------------
+export async function fetchTeacherAnalytics() {
+  return get("/teacher/analytics");
+}
+
+export async function fetchTeacherStudentDashboard(studentProfileId) {
+  return get(`/teacher/student/${studentProfileId}`);
+}
+
+// -------------------------------------------------------------
+// Parent Portal APIs
+// -------------------------------------------------------------
+export async function linkChild(studentEmail) {
+  return post("/parent/link", { studentEmail });
+}
+
+export async function fetchParentChildren() {
+  return get("/parent/children");
+}
+
+export async function fetchChildReportCard(studentProfileId) {
+  return get(`/parent/child/${studentProfileId}`);
+}
+
+// -------------------------------------------------------------
 // Story & Feedback APIs (Batman / Section content generator)
 // -------------------------------------------------------------
 export async function generateStory({ character, sectionTitle, sectionTopic, sessionAccuracy = 0 }) {

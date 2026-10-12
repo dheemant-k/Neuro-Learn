@@ -29,7 +29,6 @@ public class DashboardService {
     }
 
     public DashboardResponse getDashboardData(String userEmail) {
-        // Find profile by email, or fallback to first available profile
         StudentProfile profile = null;
         if (userEmail != null && !userEmail.isBlank()) {
             Optional<User> userOpt = userRepository.findByEmail(userEmail);
@@ -44,6 +43,20 @@ public class DashboardService {
             }
         }
 
+        return buildDashboardForProfile(profile);
+    }
+
+    public DashboardResponse getDashboardDataByProfileId(Long profileId) {
+        StudentProfile profile = profileRepository.findById(profileId).orElse(null);
+        return buildDashboardForProfile(profile);
+    }
+
+    public DashboardResponse getDashboardDataByUserId(Long userId) {
+        StudentProfile profile = profileRepository.findByUserId(userId).orElse(null);
+        return buildDashboardForProfile(profile);
+    }
+
+    public DashboardResponse buildDashboardForProfile(StudentProfile profile) {
         if (profile == null) {
             return new DashboardResponse(0, 1, 0, 0, 0.0, 0.20, Collections.emptyList(), Collections.emptyList());
         }

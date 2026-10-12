@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { chapters, characters } from "../data/chapters";
 import bg from "../assets/bg.gif";
 import PixelFooter from "../components/PixelFooter";
@@ -77,7 +77,7 @@ export default function HomePage({ selectedCharacter, onSelectCharacter, onSelec
                   onClick={onDashboard}
                   className="px-7 py-3 rounded-xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(13,26,58,0.55)] hover:bg-[rgba(13,26,58,0.85)] transition"
                 >
-                  Parent Dashboard
+                  {user?.role === "TEACHER" ? "🖥 Teacher Dashboard" : user?.role === "PARENT" ? "👨‍👧 Parent Portal" : "📊 My Dashboard"}
                 </button>
               </div>
             </div>
