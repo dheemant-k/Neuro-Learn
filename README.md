@@ -1038,3 +1038,31 @@ Engagement/attention modeling is explicitly reserved for **future work** and is 
 # 25. One-Sentence Summary
 
 > **NeuroLearn continuously learns from how a student performs, adapts the difficulty of what they see next, maintains their learning profile over time, and provides students, teachers, and parents with actionable learning insights.**
+
+---
+
+# 26. Mathematical Model & Academic Research Citations
+
+### 26.1 Bayesian Knowledge Tracing (BKT) Model
+NeuroLearn tracks student latent knowledge state \( P(L_t) \) per topic using the canonical Corbett & Anderson (1995) two-state Hidden Markov Model:
+
+$$P(L_t \mid \text{Obs}_t = \text{Correct}) = \frac{P(L_{t-1}) \cdot (1 - P(S))}{P(L_{t-1}) \cdot (1 - P(S)) + (1 - P(L_{t-1})) \cdot P(G)}$$
+
+$$P(L_t \mid \text{Obs}_t = \text{Incorrect}) = \frac{P(L_{t-1}) \cdot P(S)}{P(L_{t-1}) \cdot P(S) + (1 - P(L_{t-1})) \cdot (1 - P(G))}$$
+
+$$P(L_{t+1}) = P(L_t \mid \text{Obs}_t) + (1 - P(L_t \mid \text{Obs}_t)) \cdot P(T)$$
+
+Where:
+- **\( P(L_0) = 0.20 \)**: Prior probability of knowing the skill initially.
+- **\( P(T) = 0.15 \)**: Probability of transitioning from unlearned to learned state after an attempt.
+- **\( P(G) = 0.25 \)**: Guess probability (correct answer despite not knowing the skill, 4-choice MCQ).
+- **\( P(S) = 0.10 \)**: Slip probability (incorrect answer despite knowing the skill).
+- **Mastery Threshold**: \( P(L) \ge 0.85 \) (Bloom's Mastery Learning Criterion).
+
+### 26.2 Academic Citations
+
+1. **Corbett, A. T., & Anderson, J. R. (1995)**. *Knowledge tracing: Modeling the acquisition of procedural knowledge.* User Modeling and User-Adapted Interaction, 4(4), 253-278.
+2. **Bloom, B. S. (1984)**. *The 2 Sigma Problem: The search for methods of group instruction as effective as one-to-one tutoring.* Educational Researcher, 13(6), 4-16.
+3. **VanLehn, K. (2011)**. *The relative effectiveness of human tutoring, intelligent tutoring systems, and other tutoring systems.* Educational Psychologist, 46(4), 197-221.
+4. **Ryan, R. M., & Deci, E. L. (2000)**. *Self-determination theory and the facilitation of intrinsic motivation, social development, and well-being.* American Psychologist, 55(1), 68-78.
+5. **Durlak, J. A., et al. (2011)**. *The impact of enhancing students' social and emotional learning: A meta-analysis of school-based universal interventions.* Child Development, 82(1), 405-432.
