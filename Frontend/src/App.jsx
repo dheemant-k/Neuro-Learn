@@ -63,7 +63,7 @@ function AppContent() {
         />
       )}
       {page === "auth" && (
-        <AuthPage onLoginSuccess={() => setPage("home")} />
+        <AuthPage onLoginSuccess={() => setPage("home")} onBack={goHome} />
       )}
       {page === "roadmap" && chapter && character && (
         <RoadmapPage

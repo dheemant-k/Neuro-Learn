@@ -1,8 +1,8 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import bg from "../assets/bg.gif";
 
-export default function AuthPage({ onLoginSuccess }) {
+export default function AuthPage({ onLoginSuccess, onBack }) {
   const { login, register } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
 
@@ -36,6 +36,24 @@ export default function AuthPage({ onLoginSuccess }) {
     }
   };
 
+  const handleQuickDemo = async (demoEmail) => {
+    setError(null);
+    setEmail(demoEmail);
+    setPassword("password123");
+    setIsRegister(false);
+    setLoading(true);
+    try {
+      await login(demoEmail, "password123");
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
+    } catch (err) {
+      setError(err.message || "Demo login failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen text-slate-100 flex items-center justify-center p-4">
       {/* Background with theme overlay */}
@@ -45,8 +63,16 @@ export default function AuthPage({ onLoginSuccess }) {
       <div className="fixed inset-0 -z-10 bg-[linear-gradient(180deg,rgba(15,23,42,0.85)_0%,rgba(30,41,59,0.92)_100%)] backdrop-blur-sm" />
 
       {/* Auth Card */}
-      <div className="w-full max-w-md rounded-3xl border-2 border-[rgba(51,65,85,0.85)] bg-[rgba(15,23,42,0.88)] p-8 shadow-2xl backdrop-blur-md">
-        <div className="text-center">
+      <div className="w-full max-w-md rounded-3xl border-2 border-[rgba(51,65,85,0.85)] bg-[rgba(15,23,42,0.88)] p-8 shadow-2xl backdrop-blur-md relative">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="absolute top-6 left-6 text-xs px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition"
+          >
+            ← Home
+          </button>
+        )}
+        <div className="text-center pt-2">
           <div className="text-xs tracking-[0.3em] text-[rgb(94,234,212)] font-semibold">
             NEUROLEARN SYSTEM
           </div>
@@ -60,13 +86,47 @@ export default function AuthPage({ onLoginSuccess }) {
           </p>
         </div>
 
+        {/* Quick Demo Access Bar */}
+        <div className="mt-6 p-3.5 rounded-2xl border border-sky-500/30 bg-sky-950/30">
+          <div className="flex items-center justify-between text-xs font-semibold text-sky-300 mb-2">
+            <span>⚡ Quick Demo Access</span>
+            <span className="text-[10px] text-slate-400 font-normal">1-click test</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleQuickDemo("bruce@neurolearn.com")}
+              className="py-1.5 px-1 rounded-xl border border-teal-500/40 bg-teal-500/10 hover:bg-teal-500/25 text-teal-300 text-xs font-semibold transition disabled:opacity-50 text-center"
+            >
+              🦸 Student
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleQuickDemo("teacher@neurolearn.com")}
+              className="py-1.5 px-1 rounded-xl border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/25 text-sky-300 text-xs font-semibold transition disabled:opacity-50 text-center"
+            >
+              🖥 Teacher
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleQuickDemo("parent@neurolearn.com")}
+              className="py-1.5 px-1 rounded-xl border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/25 text-indigo-300 text-xs font-semibold transition disabled:opacity-50 text-center"
+            >
+              👨‍👧 Parent
+            </button>
+          </div>
+        </div>
+
         {error && (
-          <div className="mt-6 p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 text-sm text-center">
+          <div className="mt-4 p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 text-sm text-center">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {isRegister && (
             <div>
               <label className="block text-xs uppercase tracking-wider text-slate-300 font-semibold mb-1">
