@@ -1,11 +1,11 @@
+import supermanImg from "../assets/superman.png";
+import supergirlImg from "../assets/supergirl.png";
 import batmanImg from "../assets/batman.png";
-import jokerImg from "../assets/joker.png";
-import alfredImg from "../assets/alfred.png";
 
 export const characters = [
-  { id: "batman", name: "Batman", image: batmanImg, personality: "strategic and calm" },
-  { id: "joker", name: "Joker", image: jokerImg, personality: "playful and unpredictable" },
-  { id: "alfred", name: "Alfred", image: alfredImg, personality: "wise and encouraging" },
+  { id: "superman", name: "Superman", image: supermanImg, personality: "hope & solar power" },
+  { id: "supergirl", name: "Supergirl", image: supergirlImg, personality: "speed & cosmic energy" },
+  { id: "batman", name: "Batman", image: batmanImg, personality: "tactical precision & deduction" },
 ];
 
 export const chapters = [

@@ -5,7 +5,7 @@ import PixelFooter from "../components/PixelFooter";
 import { useAuth } from "../context/AuthContext";
 
 export default function HomePage({ selectedCharacter, onSelectCharacter, onSelectChapter, onDashboard, onGoAuth }) {
-  const [charPick, setCharPick] = useState(selectedCharacter?.id || null);
+  const [charPick, setCharPick] = useState(selectedCharacter?.id || "superman");
   const { user, isAuthenticated, logout } = useAuth();
 
   const handleStart = (chapter) => {
