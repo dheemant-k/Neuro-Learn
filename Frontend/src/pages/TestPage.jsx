@@ -6,6 +6,7 @@ import {
   completeLearningSession,
 } from "../utils/api";
 import { sound } from "../utils/soundEffects";
+import CharacterReactionPopup from "../components/CharacterReactionPopup";
 
 export default function TestPage({ section, character, onFinish, onBack }) {
   const TOTAL = 5;
@@ -30,6 +31,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   const [floatingEffects, setFloatingEffects] = useState([]); // { id, text, type }
   const [cardShake, setCardShake] = useState(false);
   const [muted, setMuted] = useState(sound.isMuted());
+  const [reactionState, setReactionState] = useState("idle"); // "idle" | "correct" | "wrong"
 
   // Tactical Power-Ups
   const [xRayAvailable, setXRayAvailable] = useState(true);
@@ -72,6 +74,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     setBktUpdate(null);
     setEliminatedOptions([]);
     setShowKryptonClue(false);
+    setReactionState("idle");
 
     // Shuffle options dynamically
     const raw = [
@@ -175,6 +178,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     setShowExplain(true);
 
     if (isCorrect) {
+      setReactionState("correct");
       sound.playCorrect();
       setTotalCorrect((c) => c + 1);
       const newStreak = streak + 1;
@@ -196,6 +200,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
       setHeroQuote("Direct hit! Solar blast neutralized this frequency node.");
       setLexQuote("Firewall compromised! Security node damaged.");
     } else {
+      setReactionState("wrong");
       sound.playWrong();
       setStreak(0);
       setXpGained((x) => x + 5);
@@ -231,6 +236,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
 
   const next = async () => {
     sound.playClick();
+    setReactionState("idle");
     const nextIdx = qIndex + 1;
     if (nextIdx >= TOTAL) {
       if (sessionId) {
@@ -667,6 +673,14 @@ export default function TestPage({ section, character, onFinish, onBack }) {
           )}
         </div>
       </main>
+
+      {/* Dynamic Animated Character Reaction Cut-in */}
+      <CharacterReactionPopup
+        hero={character}
+        state={reactionState}
+        streak={streak}
+        selectedOption={selected}
+      />
     </div>
   );
 }
