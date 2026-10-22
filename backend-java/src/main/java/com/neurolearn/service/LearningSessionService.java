@@ -76,6 +76,10 @@ public class LearningSessionService {
     }
 
     public NextQuestionResponse getNextAdaptiveQuestion(Long sessionId, String topic) {
+        return getNextAdaptiveQuestion(sessionId, topic, null);
+    }
+
+    public NextQuestionResponse getNextAdaptiveQuestion(Long sessionId, String topic, String characterTheme) {
         LearningSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
 
@@ -101,13 +105,27 @@ public class LearningSessionService {
         AdaptiveDecision decision = adaptiveEngineService.evaluateBkt(currentPKnow, lastDifficulty, count);
         int targetDifficulty = decision.nextDifficulty();
 
-        // Find questions with targetDifficulty, excluding already answered in this session
-        List<Question> candidates = questionRepository.findByTopicAndDifficulty(topic, targetDifficulty);
+        // Find questions matching topic, targetDifficulty, and characterTheme
+        List<Question> candidates;
+        if (characterTheme != null && !characterTheme.isBlank()) {
+            candidates = questionRepository.findByTopicAndDifficultyAndCharacterTheme(topic, targetDifficulty, characterTheme);
+        } else {
+            candidates = questionRepository.findByTopicAndDifficulty(topic, targetDifficulty);
+        }
+
         List<Question> unattempted = candidates.stream()
                 .filter(q -> !attemptedIds.contains(q.getId()))
                 .collect(Collectors.toList());
 
-        // Fallback to any unattempted under the topic
+        // Fallback to any unattempted under the topic (with character theme first)
+        if (unattempted.isEmpty() && characterTheme != null && !characterTheme.isBlank()) {
+            List<Question> allThemeQuestions = questionRepository.findByTopicAndCharacterTheme(topic, characterTheme);
+            unattempted = allThemeQuestions.stream()
+                    .filter(q -> !attemptedIds.contains(q.getId()))
+                    .collect(Collectors.toList());
+        }
+
+        // Fallback to any unattempted under topic regardless of theme
         if (unattempted.isEmpty()) {
             List<Question> allTopicQuestions = questionRepository.findByTopic(topic);
             unattempted = allTopicQuestions.stream()
@@ -120,7 +138,12 @@ public class LearningSessionService {
         if (!unattempted.isEmpty()) {
             chosen = unattempted.get(new Random().nextInt(unattempted.size()));
         } else {
-            List<Question> allTopicQuestions = questionRepository.findByTopic(topic);
+            List<Question> allTopicQuestions = (characterTheme != null && !characterTheme.isBlank())
+                    ? questionRepository.findByTopicAndCharacterTheme(topic, characterTheme)
+                    : questionRepository.findByTopic(topic);
+            if (allTopicQuestions.isEmpty()) {
+                allTopicQuestions = questionRepository.findByTopic(topic);
+            }
             chosen = !allTopicQuestions.isEmpty() ? allTopicQuestions.get(0) : null;
         }
 

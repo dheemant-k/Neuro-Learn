@@ -13,12 +13,20 @@ import java.util.Optional;
 public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByTopicAndDifficulty(String topic, Integer difficulty);
     List<Question> findByTopic(String topic);
+    List<Question> findByTopicAndDifficultyAndCharacterTheme(String topic, Integer difficulty, String characterTheme);
+    List<Question> findByTopicAndCharacterTheme(String topic, String characterTheme);
 
     @Query(value = "SELECT * FROM questions WHERE topic = :topic AND difficulty = :difficulty ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     Optional<Question> findRandomQuestionByTopicAndDifficulty(@Param("topic") String topic, @Param("difficulty") Integer difficulty);
 
     @Query(value = "SELECT * FROM questions WHERE topic = :topic ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     Optional<Question> findRandomQuestionByTopic(@Param("topic") String topic);
+
+    @Query(value = "SELECT * FROM questions WHERE topic = :topic AND difficulty = :difficulty AND character_theme = :characterTheme ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    Optional<Question> findRandomQuestionByTopicAndDifficultyAndCharacterTheme(@Param("topic") String topic, @Param("difficulty") Integer difficulty, @Param("characterTheme") String characterTheme);
+
+    @Query(value = "SELECT * FROM questions WHERE topic = :topic AND character_theme = :characterTheme ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    Optional<Question> findRandomQuestionByTopicAndCharacterTheme(@Param("topic") String topic, @Param("characterTheme") String characterTheme);
 
     @Query(value = "SELECT DISTINCT topic FROM questions ORDER BY topic", nativeQuery = true)
     List<String> findDistinctTopics();

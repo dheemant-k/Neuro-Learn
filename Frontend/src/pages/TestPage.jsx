@@ -109,7 +109,11 @@ export default function TestPage({ section, character, onFinish, onBack }) {
         const sId = sessionRes ? sessionRes.id : 1;
         if (mounted) setSessionId(sId);
 
-        const adaptiveRes = await fetchNextAdaptiveQuestion({ sessionId: sId, topic: section.id });
+        const adaptiveRes = await fetchNextAdaptiveQuestion({
+          sessionId: sId,
+          topic: section.id,
+          character: character?.id || "superman",
+        });
         if (mounted && adaptiveRes?.question) {
           setAdaptiveInfo(adaptiveRes);
           displayQuestion(adaptiveRes.question, adaptiveRes);
@@ -253,7 +257,11 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     setQIndex(nextIdx);
 
     try {
-      const adaptiveRes = await fetchNextAdaptiveQuestion({ sessionId: sessionId || 1, topic: section.id });
+      const adaptiveRes = await fetchNextAdaptiveQuestion({
+        sessionId: sessionId || 1,
+        topic: section.id,
+        character: character?.id || "superman",
+      });
       if (adaptiveRes?.question) {
         setAdaptiveInfo(adaptiveRes);
         displayQuestion(adaptiveRes.question, adaptiveRes);
@@ -335,6 +343,27 @@ export default function TestPage({ section, character, onFinish, onBack }) {
       return "💡 Graphing Strategy: Find intercepts: set x = 0 to get the y-intercept, set y = 0 to get the x-intercept. Plot the two points!";
     }
     return "💡 General Strategy: Keep equations balanced by doing the same arithmetic operation to both sides of the equal sign.";
+  };
+
+  // Helper to format equations with distinct high-contrast chips
+  const formatTextWithEquations = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(\b-?\d*x\s*[\+\-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[\+\-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9\-]+,\s*[a-zA-Z0-9\-]+\))/g);
+    if (parts.length <= 1) return text;
+
+    return parts.map((part, i) => {
+      if (part.match(/(\b-?\d*x\s*[\+\-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[\+\-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9\-]+,\s*[a-zA-Z0-9\-]+\))/)) {
+        return (
+          <span
+            key={i}
+            className="mx-1 px-2.5 py-0.5 rounded-lg bg-slate-950/90 border border-sky-400/60 text-amber-300 font-mono font-bold text-[0.95em] shadow-sm tracking-wide inline-block"
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
   };
 
   const correctKey = (currentQ?.correctAnswer || "A").trim().toUpperCase();
@@ -544,53 +573,97 @@ export default function TestPage({ section, character, onFinish, onBack }) {
 
         {/* QUESTION CARD */}
         <div
-          className={`mt-4 rounded-3xl border-2 border-slate-800 bg-[rgba(15,23,42,0.85)] p-6 md:p-8 shadow-2xl backdrop-blur-md transition-all ${
+          className={`mt-4 rounded-3xl border-2 border-slate-800/90 bg-gradient-to-b from-slate-900/95 via-slate-900/90 to-slate-950/95 p-6 md:p-8 shadow-2xl backdrop-blur-xl transition-all ${
             cardShake ? "animate-pulse ring-2 ring-rose-500" : ""
           }`}
         >
           {loading ? (
-            <div className="py-16 text-center">
-              <div className="pixel-heading text-lg text-sky-400 animate-pulse">
-                Accessing LexCorp mainframe...
+            <div className="py-20 text-center">
+              <div className="inline-block p-4 rounded-3xl bg-sky-500/10 border border-sky-500/30 mb-4 animate-bounce">
+                <span className="text-3xl">🛰️</span>
               </div>
+              <div className="pixel-heading text-lg text-sky-400 animate-pulse">
+                Accessing LexCorp Mainframe Coordinates...
+              </div>
+              <p className="text-xs text-slate-400 mt-2">Decryption algorithms running...</p>
             </div>
           ) : (
             <>
-              {/* Question Text */}
-              <div className="text-base md:text-xl font-medium text-slate-100 leading-relaxed font-mono">
-                {currentQ?.questionText}
+              {/* Question HUD Header Bar */}
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-4 mb-5 border-b border-slate-800/80 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-slate-400 font-mono uppercase tracking-wider text-[11px] font-bold">
+                    MISSION NODE {String(qIndex + 1).padStart(2, "0")} / {String(TOTAL).padStart(2, "0")}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-slate-800/90 border border-slate-700/80 text-slate-300 text-[11px] font-semibold flex items-center gap-1.5 shadow-sm">
+                    <span>{currentQ?.difficulty === 3 ? "🔴" : currentQ?.difficulty === 2 ? "🟡" : "🟢"}</span>
+                    <span>{currentQ?.difficulty === 3 ? "Tier 3 • Advanced" : currentQ?.difficulty === 2 ? "Tier 2 • Intermediate" : "Tier 1 • Foundational"}</span>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full bg-sky-500/15 border border-sky-400/40 text-sky-300 text-[11px] font-bold shadow-sm">
+                    {currentQ?.characterTheme ? `⚡ ${currentQ.characterTheme.toUpperCase()}` : "⚡ LINEAR SYSTEMS"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Question Narrative & Main Body */}
+              <div className="space-y-4">
+                {(() => {
+                  const raw = currentQ?.questionText || "";
+                  const colonIdx = raw.indexOf(":");
+                  const hasPrefix = colonIdx > 0 && colonIdx < 50;
+                  const prefix = hasPrefix ? raw.slice(0, colonIdx).trim() : null;
+                  const body = hasPrefix ? raw.slice(colonIdx + 1).trim() : raw;
+
+                  return (
+                    <div className="space-y-3">
+                      {prefix && (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-500/20 to-indigo-500/20 border border-sky-400/40 text-sky-200 text-xs font-bold tracking-wide shadow-md">
+                          <span className="text-base">{prefix.slice(0, 2)}</span>
+                          <span>{prefix.slice(2).trim()}</span>
+                        </div>
+                      )}
+                      <div className="text-base md:text-lg text-slate-100 font-sans leading-relaxed tracking-wide font-medium">
+                        {formatTextWithEquations(body)}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Shuffled Options Grid */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="mt-7 grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {shuffledOptions.map((opt, idx) => {
                   const isEliminated = eliminatedOptions.includes(opt.key);
                   const isChosen = selected === idx;
                   const isTargetCorrect = opt.key === correctKey;
 
                   let cardClasses =
-                    "relative p-4 rounded-2xl border-2 text-left font-medium transition-all text-sm flex items-center justify-between ";
+                    "group relative p-4 rounded-2xl border-2 text-left font-medium transition-all text-sm flex items-center justify-between shadow-sm ";
 
                   if (isEliminated) {
                     cardClasses +=
-                      "border-slate-800/60 bg-slate-950/40 text-slate-600 line-through cursor-not-allowed opacity-40 ";
+                      "border-slate-800/40 bg-slate-950/40 text-slate-600 line-through cursor-not-allowed opacity-35 ";
                   } else if (!locked) {
                     if (isChosen) {
                       cardClasses +=
-                        "border-sky-400 bg-sky-500/20 text-sky-100 ring-2 ring-sky-400/50 scale-[1.01] ";
+                        "border-sky-400 bg-sky-500/20 text-sky-100 ring-2 ring-sky-400/50 shadow-lg shadow-sky-500/20 scale-[1.01] ";
                     } else {
                       cardClasses +=
-                        "border-slate-800 bg-slate-900/70 hover:border-slate-600 hover:bg-slate-800/80 text-slate-200 cursor-pointer ";
+                        "border-slate-800/90 bg-slate-900/70 hover:border-sky-500/60 hover:bg-slate-800/90 text-slate-200 cursor-pointer hover:-translate-y-0.5 hover:shadow-md ";
                     }
                   } else {
                     if (isTargetCorrect) {
                       cardClasses +=
-                        "border-emerald-400 bg-emerald-500/20 text-emerald-100 ring-2 ring-emerald-400/50 ";
+                        "border-emerald-400 bg-emerald-500/20 text-emerald-100 ring-2 ring-emerald-400/60 shadow-lg shadow-emerald-500/20 ";
                     } else if (isChosen && !isTargetCorrect) {
                       cardClasses +=
-                        "border-rose-500 bg-rose-500/20 text-rose-100 ring-2 ring-rose-500/50 ";
+                        "border-rose-500 bg-rose-500/20 text-rose-100 ring-2 ring-rose-500/60 shadow-lg shadow-rose-500/20 ";
                     } else {
-                      cardClasses += "border-slate-800 bg-slate-900/40 text-slate-500 opacity-50 ";
+                      cardClasses += "border-slate-800/60 bg-slate-900/30 text-slate-500 opacity-45 ";
                     }
                   }
 
@@ -604,17 +677,29 @@ export default function TestPage({ section, character, onFinish, onBack }) {
                       }}
                       className={cardClasses}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400">
+                      <div className="flex items-center gap-3.5">
+                        <span
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-xs transition-all shadow-inner shrink-0 ${
+                            isChosen && !locked
+                              ? "bg-sky-400 text-slate-950 shadow-sky-400/50"
+                              : "bg-slate-800/90 border border-slate-700/80 text-slate-300 group-hover:border-slate-500"
+                          }`}
+                        >
                           {idx + 1}
                         </span>
-                        <span>{opt.text}</span>
+                        <span className="text-sm md:text-base font-medium tracking-wide">
+                          {formatTextWithEquations(opt.text)}
+                        </span>
                       </div>
                       {locked && isTargetCorrect && (
-                        <span className="text-emerald-400 font-bold text-base">✓</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-400/60 text-emerald-400 font-bold text-xs flex items-center gap-1 animate-bounce">
+                          <span>✓</span> Correct
+                        </span>
                       )}
                       {locked && isChosen && !isTargetCorrect && (
-                        <span className="text-rose-400 font-bold text-base">✗</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-rose-500/20 border border-rose-400/60 text-rose-400 font-bold text-xs flex items-center gap-1">
+                          <span>✗</span> Miscalculated
+                        </span>
                       )}
                     </button>
                   );
@@ -622,37 +707,43 @@ export default function TestPage({ section, character, onFinish, onBack }) {
               </div>
 
               {/* Action Buttons: Confirm or Next */}
-              <div className="mt-6 flex items-center justify-between gap-4">
-                <div className="text-xs text-slate-400">
-                  {!locked ? "Press 1–4 to pick, Enter to lock in" : "Press Enter for next node"}
+              <div className="mt-7 pt-4 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-4">
+                <div className="text-xs text-slate-400 flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-slate-800 font-mono text-[11px] text-slate-300">
+                    HOTKEY
+                  </span>
+                  <span>{!locked ? "Press 1–4 to select, Enter to lock in" : "Press Enter for next frequency node"}</span>
                 </div>
 
                 {!locked ? (
                   <button
                     onClick={submit}
                     disabled={selected === null}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 font-bold hover:brightness-110 transition shadow-lg shadow-sky-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-7 py-3 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 font-bold hover:brightness-110 transition shadow-lg shadow-sky-500/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Lock In Answer →
+                    <span>Lock In Coordinates</span>
+                    <span>→</span>
                   </button>
                 ) : (
                   <button
                     onClick={next}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-bold hover:brightness-110 transition shadow-lg shadow-emerald-500/20"
+                    className="px-7 py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-bold hover:brightness-110 transition shadow-lg shadow-emerald-500/25 flex items-center gap-2"
                   >
-                    {qIndex + 1 >= TOTAL ? "Complete Mission 🏆" : "Next Frequency Node →"}
+                    <span>{qIndex + 1 >= TOTAL ? "Complete Mission 🏆" : "Next Frequency Node"}</span>
+                    <span>→</span>
                   </button>
                 )}
               </div>
 
-              {/* Step-by-Step Explanation Banner */}
+              {/* Step-by-Step Tactical Breakdown Banner */}
               {showExplain && currentQ?.explanation && (
-                <div className="mt-5 p-4 rounded-2xl border border-sky-500/30 bg-sky-950/20 animate-fadeIn">
-                  <div className="text-xs font-bold text-sky-400 uppercase tracking-wider mb-1">
-                    📖 Tactical Breakdown
+                <div className="mt-5 p-5 rounded-2xl border border-sky-500/40 bg-gradient-to-r from-sky-950/40 to-slate-900/60 animate-fadeIn shadow-xl">
+                  <div className="flex items-center gap-2 text-xs font-bold text-sky-400 uppercase tracking-wider mb-2">
+                    <span>📖</span>
+                    <span>Tactical Reconnaissance // Step-by-Step Breakdown</span>
                   </div>
                   <p className="text-sm text-slate-200 leading-relaxed font-sans">
-                    {currentQ.explanation}
+                    {formatTextWithEquations(currentQ.explanation)}
                   </p>
                 </div>
               )}

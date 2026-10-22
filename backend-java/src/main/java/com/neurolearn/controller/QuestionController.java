@@ -20,17 +20,23 @@ public class QuestionController {
     @GetMapping
     public ResponseEntity<List<QuestionResponse>> getQuestions(
             @RequestParam(required = false) String topic,
-            @RequestParam(required = false) Integer difficulty
+            @RequestParam(required = false) Integer difficulty,
+            @RequestParam(required = false, name = "character") String character,
+            @RequestParam(required = false, name = "characterTheme") String characterTheme
     ) {
-        return ResponseEntity.ok(questionService.getQuestions(topic, difficulty));
+        String theme = characterTheme != null ? characterTheme : character;
+        return ResponseEntity.ok(questionService.getQuestions(topic, difficulty, theme));
     }
 
     @GetMapping("/random")
     public ResponseEntity<QuestionResponse> getRandomQuestion(
             @RequestParam(required = false) String topic,
-            @RequestParam(required = false) Integer difficulty
+            @RequestParam(required = false) Integer difficulty,
+            @RequestParam(required = false, name = "character") String character,
+            @RequestParam(required = false, name = "characterTheme") String characterTheme
     ) {
-        QuestionResponse q = questionService.getRandomQuestion(topic, difficulty);
+        String theme = characterTheme != null ? characterTheme : character;
+        QuestionResponse q = questionService.getRandomQuestion(topic, difficulty, theme);
         if (q == null) {
             return ResponseEntity.notFound().build();
         }

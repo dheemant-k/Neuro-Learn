@@ -51,18 +51,22 @@ export async function getMe() {
 // -------------------------------------------------------------
 // Question Bank APIs (Spring Boot)
 // -------------------------------------------------------------
-export async function fetchQuestions({ topic, difficulty }) {
+export async function fetchQuestions({ topic, difficulty, character, characterTheme }) {
   const params = new URLSearchParams();
   if (topic) params.append("topic", topic);
   if (difficulty) params.append("difficulty", difficulty);
+  const theme = characterTheme || character;
+  if (theme) params.append("characterTheme", theme);
   const query = params.toString() ? `?${params.toString()}` : "";
   return get(`/questions${query}`);
 }
 
-export async function fetchRandomQuestion({ topic, difficulty }) {
+export async function fetchRandomQuestion({ topic, difficulty, character, characterTheme }) {
   const params = new URLSearchParams();
   if (topic) params.append("topic", topic);
   if (difficulty) params.append("difficulty", difficulty);
+  const theme = characterTheme || character;
+  if (theme) params.append("characterTheme", theme);
   const query = params.toString() ? `?${params.toString()}` : "";
   return get(`/questions/random${query}`);
 }
@@ -78,9 +82,11 @@ export async function startLearningSession({ topic }) {
   return post("/sessions/start", { topic });
 }
 
-export async function fetchNextAdaptiveQuestion({ sessionId, topic }) {
+export async function fetchNextAdaptiveQuestion({ sessionId, topic, character, characterTheme }) {
   const params = new URLSearchParams();
   if (topic) params.append("topic", topic);
+  const theme = characterTheme || character;
+  if (theme) params.append("characterTheme", theme);
   const query = params.toString() ? `?${params.toString()}` : "";
   return get(`/sessions/${sessionId}/next-question${query}`);
 }

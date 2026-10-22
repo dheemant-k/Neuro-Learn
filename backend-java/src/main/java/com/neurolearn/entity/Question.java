@@ -40,10 +40,17 @@ public class Question {
     @Column(length = 50)
     private String subject = "Math";
 
+    @Column(name = "character_theme", length = 50)
+    private String characterTheme = "batman";
+
     public Question() {
     }
 
     public Question(Long id, String topic, Integer difficulty, String questionText, String optionA, String optionB, String optionC, String optionD, String correctAnswer, String explanation, String subject) {
+        this(id, topic, difficulty, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, "batman");
+    }
+
+    public Question(Long id, String topic, Integer difficulty, String questionText, String optionA, String optionB, String optionC, String optionD, String correctAnswer, String explanation, String subject, String characterTheme) {
         this.id = id;
         this.topic = topic;
         this.difficulty = difficulty != null ? difficulty : 1;
@@ -55,6 +62,7 @@ public class Question {
         this.correctAnswer = correctAnswer;
         this.explanation = explanation;
         this.subject = subject != null ? subject : "Math";
+        this.characterTheme = characterTheme != null ? characterTheme : "batman";
     }
 
     public Long getId() {
@@ -143,5 +151,13 @@ public class Question {
 
     public void setSubject(String subject) {
         this.subject = subject;
+    }
+
+    public String getCharacterTheme() {
+        return characterTheme;
+    }
+
+    public void setCharacterTheme(String characterTheme) {
+        this.characterTheme = characterTheme;
     }
 }

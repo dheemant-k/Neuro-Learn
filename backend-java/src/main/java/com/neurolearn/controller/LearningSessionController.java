@@ -30,9 +30,12 @@ public class LearningSessionController {
     @GetMapping("/{id}/next-question")
     public ResponseEntity<NextQuestionResponse> getNextAdaptiveQuestion(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "intro") String topic
+            @RequestParam(defaultValue = "intro") String topic,
+            @RequestParam(required = false, name = "character") String character,
+            @RequestParam(required = false, name = "characterTheme") String characterTheme
     ) {
-        return ResponseEntity.ok(sessionService.getNextAdaptiveQuestion(id, topic));
+        String theme = characterTheme != null ? characterTheme : character;
+        return ResponseEntity.ok(sessionService.getNextAdaptiveQuestion(id, topic, theme));
     }
 
     @PostMapping("/{id}/attempt")

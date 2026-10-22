@@ -14,11 +14,16 @@ public class QuestionResponse {
     private String correctAnswer;
     private String explanation;
     private String subject;
+    private String characterTheme;
 
     public QuestionResponse() {
     }
 
     public QuestionResponse(Long id, String topic, Integer difficulty, String questionText, String optionA, String optionB, String optionC, String optionD, String correctAnswer, String explanation, String subject) {
+        this(id, topic, difficulty, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, "batman");
+    }
+
+    public QuestionResponse(Long id, String topic, Integer difficulty, String questionText, String optionA, String optionB, String optionC, String optionD, String correctAnswer, String explanation, String subject, String characterTheme) {
         this.id = id;
         this.topic = topic;
         this.difficulty = difficulty;
@@ -30,6 +35,7 @@ public class QuestionResponse {
         this.correctAnswer = correctAnswer;
         this.explanation = explanation;
         this.subject = subject;
+        this.characterTheme = characterTheme;
     }
 
     public static QuestionResponse fromEntity(Question q) {
@@ -45,7 +51,8 @@ public class QuestionResponse {
                 q.getOptionD(),
                 q.getCorrectAnswer(),
                 q.getExplanation(),
-                q.getSubject()
+                q.getSubject(),
+                q.getCharacterTheme()
         );
     }
 
@@ -81,4 +88,7 @@ public class QuestionResponse {
 
     public String getSubject() { return subject; }
     public void setSubject(String subject) { this.subject = subject; }
+
+    public String getCharacterTheme() { return characterTheme; }
+    public void setCharacterTheme(String characterTheme) { this.characterTheme = characterTheme; }
 }
