@@ -72,7 +72,7 @@ export default function RoadmapPage({ chapter, character, onLearn, onTest, onFin
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <div className="pixel-heading text-2xl md:text-3xl">{chapter.title}</div>
-            <p className="mt-2 text-slate-300/80">Follow the path to unlock the Arkham Gates Final Boss</p>
+            <p className="mt-2 text-slate-300/80">Follow the path to defeat the Final Boss and protect the city!</p>
           </div>
           <button
             onClick={loadProgress}
@@ -208,7 +208,7 @@ export default function RoadmapPage({ chapter, character, onLearn, onTest, onFin
                   </div>
                   <div className="mt-1 text-sm text-slate-300/80">
                     {bossUnlocked
-                      ? "Arkham Gatekeeper detected! Breach the mainframe using system equations."
+                      ? character && (character.id || character.name || "").toLowerCase().includes("batman") ? "Arkham Gatekeeper detected! Breach the mainframe using system equations." : character && (character.id || character.name || "").toLowerCase().includes("supergirl") ? "Brainiac Signal Array active! Bust through the frequency matrix with coordinate equations." : "LexCorp Quantum Warsuit Core online! Break Lex Luthor\u0027s defense matrix with algebraic precision!"
                       : "Complete prerequisite missions to crack the security barrier and confront the Boss!"}
                   </div>
                 </div>
