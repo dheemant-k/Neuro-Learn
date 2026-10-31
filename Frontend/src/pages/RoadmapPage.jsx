@@ -6,9 +6,11 @@ export default function RoadmapPage({ chapter, character, onLearn, onTest, onFin
   const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const chapterId = chapter?.id || "linear_eq_2var";
+
   const loadProgress = async () => {
     try {
-      const data = await fetchProgress();
+      const data = await fetchProgress(chapterId);
       if (data) setProgressData(data);
     } catch (err) {
       console.warn("Failed fetching roadmap progress:", err);
@@ -19,7 +21,7 @@ export default function RoadmapPage({ chapter, character, onLearn, onTest, onFin
 
   useEffect(() => {
     loadProgress();
-  }, []);
+  }, [chapterId]);
 
   const progressMap = {};
   if (progressData?.sections) {
@@ -185,7 +187,7 @@ export default function RoadmapPage({ chapter, character, onLearn, onTest, onFin
               }`}
             />
             <button
-              onClick={() => bossUnlocked && onFinalBoss()}
+              onClick={() => bossUnlocked && onFinalBoss(chapter.finalBoss)}
               disabled={!bossUnlocked}
               className={`w-full text-left rounded-3xl border-2 p-6 transition backdrop-blur-md ${
                 bossUnlocked
@@ -208,7 +210,7 @@ export default function RoadmapPage({ chapter, character, onLearn, onTest, onFin
                   </div>
                   <div className="mt-1 text-sm text-slate-300/80">
                     {bossUnlocked
-                      ? character && (character.id || character.name || "").toLowerCase().includes("batman") ? "Arkham Gatekeeper detected! Breach the mainframe using system equations." : character && (character.id || character.name || "").toLowerCase().includes("supergirl") ? "Brainiac Signal Array active! Bust through the frequency matrix with coordinate equations." : "LexCorp Quantum Warsuit Core online! Break Lex Luthor\u0027s defense matrix with algebraic precision!"
+                      ? chapter.id === "quadratic_equations" ? (character && (character.id || character.name || "").toLowerCase().includes("batman") ? "Ra\u0027s al Ghul Seismic Singularity detected! Defuse the shockwave roots." : character && (character.id || character.name || "").toLowerCase().includes("supergirl") ? "Brainiac Tachyon Singularity active! Shatter the quadratic matrix!" : "General Zod & Darkseid Gravitational Singularity online! Calculate roots to restore Metropolis gravity!") : (character && (character.id || character.name || "").toLowerCase().includes("batman") ? "Arkham Gatekeeper detected! Breach the mainframe using system equations." : character && (character.id || character.name || "").toLowerCase().includes("supergirl") ? "Brainiac Signal Array active! Bust through the frequency matrix with coordinate equations." : "LexCorp Quantum Warsuit Core online! Break Lex Luthor\u0027s defense matrix with algebraic precision!")
                       : "Complete prerequisite missions to crack the security barrier and confront the Boss!"}
                   </div>
                 </div>

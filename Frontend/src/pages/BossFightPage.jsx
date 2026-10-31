@@ -34,15 +34,22 @@ function formatTextWithEquations(text) {
   });
 }
 
-export default function BossFightPage({ character, onVictory, onDefeat, onBack }) {
+export default function BossFightPage({ character, chapter, bossConfig, onVictory, onDefeat, onBack }) {
   const heroId = character?.id || "superman";
   const isBatman = heroId === "batman";
   const isSupergirl = heroId === "supergirl";
+  const isQuadChapter = chapter?.id === "quadratic_equations";
+
+  const bossTopic = bossConfig?.id || (isQuadChapter ? "quad_final_boss" : "final_boss");
 
   const heroName = character?.name || (isSupergirl ? "Supergirl" : isBatman ? "Batman" : "Superman");
   const heroImg = isBatman ? batmanImg : isSupergirl ? supergirlImg : supermanImg;
-  const bossName = isBatman ? "The Joker & Arkham Syndicate" : "Lex Luthor & Quantum Warsuit";
-  const bossTitle = isBatman ? "ARKHAM GATEKEEPER" : "LEXCORP APEX WARSUT";
+  const bossName = isQuadChapter
+    ? (isBatman ? "Ra's al Ghul & Seismic Resonator" : isSupergirl ? "Brainiac & Tachyon Field" : "General Zod & Phantom Zone Singularity")
+    : (isBatman ? "The Joker & Arkham Syndicate" : "Lex Luthor & Quantum Warsuit");
+  const bossTitle = isQuadChapter
+    ? (isBatman ? "SEISMIC SINGULARITY CORE" : isSupergirl ? "BRAINIAC TACHYON MATRIX" : "KRYPTONIAN GRAVITY MATRIX")
+    : (isBatman ? "ARKHAM GATEKEEPER" : "LEXCORP APEX WARSUIT");
   const bossImg = isBatman ? jokerImg : lexluthorImg;
   const shieldLabel = isBatman ? "Bat-Shield Matrix" : "Solar Shield Matrix";
 
@@ -81,10 +88,10 @@ export default function BossFightPage({ character, onVictory, onDefeat, onBack }
     async function initBossBattle() {
       setLoading(true);
       try {
-        const sessionRes = await startLearningSession({ topic: "final_boss" }).catch(() => null);
+        const sessionRes = await startLearningSession({ topic: bossTopic }).catch(() => null);
         if (mounted && sessionRes) setSessionId(sessionRes.id);
 
-        const qList = await fetchQuestions({ topic: "final_boss", character: heroId });
+        const qList = await fetchQuestions({ topic: bossTopic, character: heroId });
         if (mounted && qList && qList.length > 0) {
           setQuestions(qList);
           displayBossQuestion(qList[0]);
@@ -197,7 +204,7 @@ export default function BossFightPage({ character, onVictory, onDefeat, onBack }
     sound.playVictory();
     setBattleState("victory");
     try {
-      await claimBossVictory();
+      await claimBossVictory(bossTopic, chapter?.id || "linear_eq_2var");
       setTotalXpAwarded((x) => x + 100);
       if (sessionId) await completeLearningSession({ sessionId }).catch(() => {});
     } catch (err) {

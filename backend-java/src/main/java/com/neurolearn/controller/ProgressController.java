@@ -7,6 +7,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/progress")
 public class ProgressController {
@@ -18,14 +20,22 @@ public class ProgressController {
     }
 
     @GetMapping
-    public ResponseEntity<ProgressResponse> getProgress(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ProgressResponse> getProgress(
+            @RequestParam(required = false, defaultValue = "linear_eq_2var") String chapterId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
         String email = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(progressService.getProgress(email));
+        return ResponseEntity.ok(progressService.getProgress(email, chapterId));
     }
 
     @PostMapping("/boss-victory")
-    public ResponseEntity<ProgressResponse> recordBossVictory(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<ProgressResponse> recordBossVictory(
+            @RequestBody(required = false) Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
         String email = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(progressService.awardBossDefeatBonus(email));
+        String bossTopic = body != null ? body.get("bossTopic") : "final_boss";
+        String chapterId = body != null ? body.get("chapterId") : "linear_eq_2var";
+        return ResponseEntity.ok(progressService.awardBossDefeatBonus(email, bossTopic, chapterId));
     }
 }

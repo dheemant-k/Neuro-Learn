@@ -11,14 +11,26 @@ import java.util.*;
 @Service
 public class ProgressService {
 
-    private static final List<String> SECTION_ORDER = List.of(
-            "intro",
-            "graphing",
-            "pair_of_equations",
-            "substitution",
-            "elimination",
-            "word_problems"
+    private static final Map<String, List<String>> CHAPTER_SECTIONS = Map.of(
+            "linear_eq_2var", List.of(
+                    "intro",
+                    "graphing",
+                    "pair_of_equations",
+                    "substitution",
+                    "elimination",
+                    "word_problems"
+            ),
+            "quadratic_equations", List.of(
+                    "quad_intro",
+                    "quad_factoring",
+                    "quad_formula",
+                    "quad_discriminant",
+                    "quad_graphing",
+                    "quad_word_problems"
+            )
     );
+
+    private static final List<String> DEFAULT_SECTION_ORDER = CHAPTER_SECTIONS.get("linear_eq_2var");
 
     private final UserRepository userRepository;
     private final StudentProfileRepository profileRepository;
@@ -47,10 +59,16 @@ public class ProgressService {
     }
 
     public ProgressResponse getProgress(String userEmail) {
+        return getProgress(userEmail, "linear_eq_2var");
+    }
+
+    public ProgressResponse getProgress(String userEmail, String chapterId) {
         StudentProfile profile = getProfileForEmail(userEmail);
         if (profile == null) {
             return new ProgressResponse(0, 1, 0.0, 0.20, false, Collections.emptyList());
         }
+
+        List<String> sectionOrder = CHAPTER_SECTIONS.getOrDefault(chapterId, DEFAULT_SECTION_ORDER);
 
         List<TopicProgress> existingList = topicProgressRepository.findByStudentProfileId(profile.getId());
         Map<String, TopicProgress> progressMap = new HashMap<>();
@@ -63,8 +81,8 @@ public class ProgressService {
         int completedCount = 0;
         double sumPKnow = 0.0;
 
-        for (int i = 0; i < SECTION_ORDER.size(); i++) {
-            String secId = SECTION_ORDER.get(i);
+        for (int i = 0; i < sectionOrder.size(); i++) {
+            String secId = sectionOrder.get(i);
             TopicProgress tp = progressMap.get(secId);
 
             int attempts = tp != null && tp.getAttempts() != null ? tp.getAttempts() : 0;
@@ -96,8 +114,8 @@ public class ProgressService {
             previousCompleted = isCompleted;
         }
 
-        boolean bossUnlocked = completedCount >= SECTION_ORDER.size() || completedCount >= 3;
-        double overallPKnow = Math.round((sumPKnow / SECTION_ORDER.size()) * 100.0) / 100.0;
+        boolean bossUnlocked = completedCount >= sectionOrder.size() || completedCount >= 3;
+        double overallPKnow = Math.round((sumPKnow / sectionOrder.size()) * 100.0) / 100.0;
 
         return new ProgressResponse(
                 profile.getTotalXp() != null ? profile.getTotalXp() : 0,
@@ -111,9 +129,14 @@ public class ProgressService {
 
     @Transactional
     public ProgressResponse awardBossDefeatBonus(String userEmail) {
+        return awardBossDefeatBonus(userEmail, "final_boss", "linear_eq_2var");
+    }
+
+    @Transactional
+    public ProgressResponse awardBossDefeatBonus(String userEmail, String bossTopic, String chapterId) {
         StudentProfile profile = getProfileForEmail(userEmail);
         if (profile == null) {
-            return getProgress(userEmail);
+            return getProgress(userEmail, chapterId);
         }
 
         int bonusXp = 100;
@@ -123,12 +146,14 @@ public class ProgressService {
         profile.setCurrentLevel((newXp / 100) + 1);
         profileRepository.save(profile);
 
-        // Mark final_boss progress as completed and mastered
-        TopicProgress bossTp = topicProgressRepository.findByStudentProfileIdAndTopic(profile.getId(), "final_boss")
+        String topicKey = (bossTopic != null && !bossTopic.isBlank()) ? bossTopic : "final_boss";
+
+        // Mark boss progress as completed and mastered
+        TopicProgress bossTp = topicProgressRepository.findByStudentProfileIdAndTopic(profile.getId(), topicKey)
                 .orElseGet(() -> {
                     TopicProgress tp = new TopicProgress();
                     tp.setStudentProfile(profile);
-                    tp.setTopic("final_boss");
+                    tp.setTopic(topicKey);
                     tp.setAttempts(0);
                     tp.setCorrectCount(0);
                     tp.setMasteryScore(0.0);
@@ -142,6 +167,6 @@ public class ProgressService {
         bossTp.setMasteryScore(100.0);
         topicProgressRepository.save(bossTp);
 
-        return getProgress(userEmail);
+        return getProgress(userEmail, chapterId);
     }
 }

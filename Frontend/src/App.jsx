@@ -18,10 +18,13 @@ function AppContent() {
   const [section, setSection] = useState(null);
   const [testResults, setTestResults] = useState(null);
 
+  const [bossConfig, setBossConfig] = useState(null);
+
   const goHome = () => {
     setPage("home");
     setChapter(null);
     setSection(null);
+    setBossConfig(null);
   };
 
   const goRoadmap = () => setPage("roadmap");
@@ -46,7 +49,8 @@ function AppContent() {
     setPage("feedback");
   };
 
-  const handleFinalBoss = () => {
+  const handleFinalBoss = (customBoss) => {
+    setBossConfig(customBoss || chapter?.finalBoss);
     setPage("boss");
   };
 
@@ -102,6 +106,8 @@ function AppContent() {
       {page === "boss" && character && (
         <BossFightPage
           character={character}
+          chapter={chapter}
+          bossConfig={bossConfig}
           onVictory={goRoadmap}
           onDefeat={goRoadmap}
           onBack={goRoadmap}
