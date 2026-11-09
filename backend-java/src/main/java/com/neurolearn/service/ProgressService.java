@@ -46,16 +46,30 @@ public class ProgressService {
         this.topicProgressRepository = topicProgressRepository;
     }
 
+    /** Section counts as completed (unlocks the next one) — deliberately lower than mastery. */
+    static final double SECTION_UNLOCK_P_KNOW = 0.40;
+    static final int SECTION_UNLOCK_CORRECT = 3;
+    static final double MASTERY_P_KNOW = 0.85;
+    /** Boss opens after this many completed sections (or all of them, for short chapters). */
+    static final int BOSS_UNLOCK_SECTIONS = 3;
+
+    static boolean isSectionCompleted(double pKnow, int attempts, int correct) {
+        return pKnow >= SECTION_UNLOCK_P_KNOW || (attempts >= 1 && correct >= SECTION_UNLOCK_CORRECT);
+    }
+
+    static boolean isMastered(double pKnow) {
+        return pKnow >= MASTERY_P_KNOW;
+    }
+
+    static boolean isBossUnlocked(int completedSections, int totalSections) {
+        return completedSections >= totalSections || completedSections >= BOSS_UNLOCK_SECTIONS;
+    }
+
+    /** The caller's own profile, or null if they have none yet. Never another student's. */
     private StudentProfile getProfileForEmail(String userEmail) {
-        if (userEmail != null && !userEmail.isBlank()) {
-            Optional<User> userOpt = userRepository.findByEmail(userEmail);
-            if (userOpt.isPresent()) {
-                Optional<StudentProfile> p = profileRepository.findByUserId(userOpt.get().getId());
-                if (p.isPresent()) return p.get();
-            }
-        }
-        List<StudentProfile> all = profileRepository.findAll();
-        return all.isEmpty() ? null : all.get(0);
+        return userRepository.findByEmail(userEmail)
+                .flatMap(user -> profileRepository.findByUserId(user.getId()))
+                .orElse(null);
     }
 
     public ProgressResponse getProgress(String userEmail) {
@@ -63,17 +77,16 @@ public class ProgressService {
     }
 
     public ProgressResponse getProgress(String userEmail, String chapterId) {
+        // No profile yet → same roadmap as a brand-new student (all sections, nothing attempted).
         StudentProfile profile = getProfileForEmail(userEmail);
-        if (profile == null) {
-            return new ProgressResponse(0, 1, 0.0, 0.20, false, Collections.emptyList());
-        }
 
         List<String> sectionOrder = CHAPTER_SECTIONS.getOrDefault(chapterId, DEFAULT_SECTION_ORDER);
 
-        List<TopicProgress> existingList = topicProgressRepository.findByStudentProfileId(profile.getId());
         Map<String, TopicProgress> progressMap = new HashMap<>();
-        for (TopicProgress tp : existingList) {
-            progressMap.put(tp.getTopic(), tp);
+        if (profile != null) {
+            for (TopicProgress tp : topicProgressRepository.findByStudentProfileId(profile.getId())) {
+                progressMap.put(tp.getTopic(), tp);
+            }
         }
 
         List<ProgressResponse.SectionProgressDto> dtoList = new ArrayList<>();
@@ -91,9 +104,8 @@ public class ProgressService {
             double pKnow = tp != null && tp.getPKnow() != null ? tp.getPKnow() : 0.20;
             sumPKnow += pKnow;
 
-            boolean isMastered = pKnow >= 0.85;
-            // A section is completed if pKnow >= 0.40 OR at least 3 correct answers
-            boolean isCompleted = (pKnow >= 0.40) || (attempts >= 1 && correct >= 3);
+            boolean isMastered = isMastered(pKnow);
+            boolean isCompleted = isSectionCompleted(pKnow, attempts, correct);
             boolean isUnlocked = (i == 0) || previousCompleted;
 
             if (isCompleted) {
@@ -114,13 +126,13 @@ public class ProgressService {
             previousCompleted = isCompleted;
         }
 
-        boolean bossUnlocked = completedCount >= sectionOrder.size() || completedCount >= 3;
+        boolean bossUnlocked = isBossUnlocked(completedCount, sectionOrder.size());
         double overallPKnow = Math.round((sumPKnow / sectionOrder.size()) * 100.0) / 100.0;
 
         return new ProgressResponse(
-                profile.getTotalXp() != null ? profile.getTotalXp() : 0,
-                profile.getCurrentLevel() != null ? profile.getCurrentLevel() : 1,
-                profile.getOverallAccuracy() != null ? profile.getOverallAccuracy() : 0.0,
+                profile != null && profile.getTotalXp() != null ? profile.getTotalXp() : 0,
+                profile != null && profile.getCurrentLevel() != null ? profile.getCurrentLevel() : 1,
+                profile != null && profile.getOverallAccuracy() != null ? profile.getOverallAccuracy() : 0.0,
                 overallPKnow,
                 bossUnlocked,
                 dtoList

@@ -3,35 +3,38 @@ import lexluthorImg from "../assets/lexluthor.png";
 
 // Typewriter hook
 function useTypewriter(text, speed = 28) {
-  const [displayed, setDisplayed] = useState("");
-  const indexRef = useRef(0);
-  const timerRef = useRef(null);
+  const [typed, setTyped] = useState({ text, count: 0 });
+  if (typed.text !== text) {
+    // New text: restart from the first character.
+    setTyped({ text, count: 0 });
+  }
 
   useEffect(() => {
-    setDisplayed("");
-    indexRef.current = 0;
-    clearInterval(timerRef.current);
     if (!text) return;
-    timerRef.current = setInterval(() => {
-      indexRef.current += 1;
-      setDisplayed(text.slice(0, indexRef.current));
-      if (indexRef.current >= text.length) clearInterval(timerRef.current);
+    const timer = setInterval(() => {
+      setTyped((prev) => {
+        if (prev.text !== text || prev.count >= text.length) return prev;
+        return { text, count: prev.count + 1 };
+      });
     }, speed);
-    return () => clearInterval(timerRef.current);
+    return () => clearInterval(timer);
   }, [text, speed]);
 
-  return displayed;
+  return (text || "").slice(0, typed.text === text ? typed.count : 0);
 }
+
+const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
 // Particle burst component
 function ParticleBurst({ active, color }) {
-  const particles = Array.from({ length: 12 }, (_, i) => i);
+  const [dists] = useState(() => Array.from({ length: 12 }, () => 40 + Math.random() * 30));
+  const particles = dists.map((_, i) => i);
   if (!active) return null;
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
       {particles.map((i) => {
         const angle = (i / particles.length) * 360;
-        const dist = 40 + Math.random() * 30;
+        const dist = dists[i];
         return (
           <div
             key={i}
@@ -51,6 +54,35 @@ function ParticleBurst({ active, color }) {
   );
 }
 
+const heroCorrectQuotes = [
+  "Direct hit! That coordinate vector balanced perfectly!",
+  "Solar Core surging! You decrypted the variable!",
+  "Linear equation conquered! That's true hero math!",
+  "Flawless! LexCorp's scrambler is destabilized!",
+  "Exactly right! Keep this speed and focus alive!",
+];
+const heroStreakQuotes = (streak) => [
+  `UNSTOPPABLE! ${streak}x Combo! Metropolis is rallying!`,
+  `DOUBLE IMPACT! ${streak} consecutive breaches!`,
+  `SUPER SONIC ACCURACY! ${streak} in a row! The city is safe!`,
+];
+const lexTaunts = [
+  "Did you drop a minus sign? My firewall absorbed that!",
+  "Miscalculated! Linear systems need precision!",
+  "Did you rush the substitution? LexCorp Grid: 1, Hero: 0!",
+  "Mathematically inaccurate! Check your coefficients!",
+];
+const lexIdleQuotes = [
+  "Your calculations won't breach my quantum grid...",
+  "LexCorp's firewall stands at 100%. Try your best.",
+  "Every equation you miss feeds my power supply.",
+];
+const heroIdleQuotes = [
+  "Focus. Metropolis is counting on you.",
+  "Take your time — solve it step by step.",
+  "I believe in you. Break through.",
+];
+
 export default function CharacterReactionPopup({
   hero,
   state, // "idle" | "correct" | "wrong"
@@ -65,44 +97,17 @@ export default function CharacterReactionPopup({
   const heroName = hero?.name || "Superman";
   const heroImg = hero?.image;
 
-  const heroCorrectQuotes = [
-    "Direct hit! That coordinate vector balanced perfectly!",
-    "Solar Core surging! You decrypted the variable!",
-    "Linear equation conquered! That's true hero math!",
-    "Flawless! LexCorp's scrambler is destabilized!",
-    "Exactly right! Keep this speed and focus alive!",
-  ];
-  const heroStreakQuotes = [
-    `UNSTOPPABLE! ${streak}x Combo! Metropolis is rallying!`,
-    `DOUBLE IMPACT! ${streak} consecutive breaches!`,
-    `SUPER SONIC ACCURACY! ${streak} in a row! The city is safe!`,
-  ];
-  const lexTaunts = [
-    "Did you drop a minus sign? My firewall absorbed that!",
-    "Miscalculated! Linear systems need precision!",
-    "Did you rush the substitution? LexCorp Grid: 1, Hero: 0!",
-    "Mathematically inaccurate! Check your coefficients!",
-  ];
-  const lexIdleQuotes = [
-    "Your calculations won't breach my quantum grid...",
-    "LexCorp's firewall stands at 100%. Try your best.",
-    "Every equation you miss feeds my power supply.",
-  ];
-  const heroIdleQuotes = [
-    "Focus. Metropolis is counting on you.",
-    "Take your time — solve it step by step.",
-    "I believe in you. Break through.",
-  ];
-
-  // Auto-dismiss bubble after 4s
+  // React to each answer result: show the bubble, fire the particle burst, auto-dismiss after 4.5s.
+  // This effect drives timers for an animation, which is what effects are for; the
+  // synchronous setState calls just kick that animation off.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     clearTimeout(dismissRef.current);
     if (state === "correct") {
       setActiveSide("hero");
       setBurstHero(true);
       setTimeout(() => setBurstHero(false), 700);
-      const quotes = streak >= 2 ? heroStreakQuotes : heroCorrectQuotes;
-      setBubbleText(quotes[Math.floor(Math.random() * quotes.length)]);
+      setBubbleText(pick(streak >= 2 ? heroStreakQuotes(streak) : heroCorrectQuotes));
       dismissRef.current = setTimeout(() => {
         setActiveSide(null);
         setBubbleText("");
@@ -111,7 +116,7 @@ export default function CharacterReactionPopup({
       setActiveSide("villain");
       setBurstVillain(true);
       setTimeout(() => setBurstVillain(false), 700);
-      setBubbleText(lexTaunts[Math.floor(Math.random() * lexTaunts.length)]);
+      setBubbleText(pick(lexTaunts));
       dismissRef.current = setTimeout(() => {
         setActiveSide(null);
         setBubbleText("");
@@ -122,9 +127,11 @@ export default function CharacterReactionPopup({
     }
     return () => clearTimeout(dismissRef.current);
   }, [state, streak]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const heroIdle = heroIdleQuotes[Math.floor(Math.random() * heroIdleQuotes.length)];
-  const lexIdle = lexIdleQuotes[Math.floor(Math.random() * lexIdleQuotes.length)];
+  // Picked once per mount so idle lines don't change on every re-render.
+  const [heroIdle] = useState(() => pick(heroIdleQuotes));
+  const [lexIdle] = useState(() => pick(lexIdleQuotes));
 
   const displayHero = activeSide === "hero" ? bubbleText : heroIdle;
   const displayLex = activeSide === "villain" ? bubbleText : lexIdle;

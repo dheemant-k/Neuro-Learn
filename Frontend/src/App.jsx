@@ -98,6 +98,7 @@ function AppContent() {
       )}
       {view === "learn" && section && character && (
         <LearnPage
+          key={section.id}
           section={section}
           character={character}
           onGoTest={() => handleTest(section)}

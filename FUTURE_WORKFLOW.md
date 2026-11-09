@@ -59,7 +59,7 @@ Effort in focused hours; adjust to the submission date.
 - [x] Add root `.gitignore` (`__pycache__/`, `*.pyc`, `.env`, `target/`, `node_modules/`, `dist/`).
 - [ ] Delete `legacy-python/` — **waiting on team decision** (§4). Tracked `.pyc` files are already untracked.
 - [x] Delete dead frontend files listed in gap #10; `npm uninstall @google/genai`. `npm run build` passes.
-- [ ] Get `npm run lint` green — was already failing before cleanup (87 problems); 65 remain, all in live files (`TestPage`, `LearnPage`, `BossFightPage`, `CharacterReactionPopup`, `soundEffects`, `api.js`, …). Needed before CI in Phase 2.
+- [x] Get `npm run lint` green — done in Phase 2: 87 → 0 problems (0 errors, 0 warnings).
 - [x] Replace `Frontend/README.md` with real run instructions; add a "Quick start" (docker → mvnw → npm) to the main README.
 - [x] Fix doc drift #14–16 (README §26 now matches `BktParameters.java` and explains the 0.40 unlock vs 0.85 mastery; README §18 checklist ticked).
 
@@ -75,11 +75,14 @@ Effort in focused hours; adjust to the submission date.
 - Known gaps, left for later phases: teachers still see every student (Phase 3 classes); the client still decides `correct` and receives `correctAnswer` with each question, so answers can be faked (fold into Phase 2/4 — check answers server-side).
 
 ### Phase 2 — Test & CI foundation (≈8 h)
-- [ ] Add Testcontainers (Postgres 16) so `contextLoads` and integration tests run without a manual DB.
-- [ ] Integration tests: register/login → start session → next-question → attempt → complete → dashboard updated (README §23 success path as a test).
-- [ ] Authorization tests: student hitting `/api/teacher/**` → 403; parent viewing an unlinked child → 403; anonymous → 401.
-- [ ] Unit tests for `ProgressService` unlock rules and `TeacherService` bottleneck rule.
-- [ ] GitHub Actions: `mvnw verify` + `npm ci && npm run lint && npm run build` on every PR.
+- [x] Testcontainers (Postgres 16, pinned to Testcontainers 1.21.4 for Docker Engine 29). `mvnw verify` needs only Docker — no manual DB.
+- [x] `LearningFlowIntegrationTest`: README §23 success path (register → session → 3 adaptive questions → complete → dashboard/progress updated), session ownership, boss XP only to the caller, new student never sees another student's data.
+- [x] `AuthorizationIntegrationTest` (19 cases): anonymous 401 JSON, role matrix for student/teacher/parent, parent linked vs unlinked child, 404s, CORS allow/deny.
+- [x] Unit tests: `ProgressRulesTest` (section unlock, mastery, boss unlock) and `TeacherRulesTest` (roster status, bottleneck alert). Rules extracted into small static methods.
+- [x] GitHub Actions `.github/workflows/ci.yml`: backend `mvnw -B verify` on JDK 17; frontend `npm ci`, `lint --max-warnings 0`, `build`. `mvnw` marked executable in git.
+- [x] Frontend lint 87 → 0. Real fixes along the way: stale keyboard handler in `TestPage` (Enter could call an outdated `submit`), idle quotes re-randomised on every render, roadmap ignoring late responses for a previous chapter.
+- [x] Fixed another "first student in the DB" fallback, this time in `ProgressService` (roadmap and boss-victory XP).
+- Total: 52 backend tests passing.
 
 ### Phase 3 — Teacher classes (≈6 h) — makes the teacher dashboard honest
 - [ ] `V8__add_classes.sql`: `classes(id, teacher_user_id, name, join_code)` + `class_enrollments(class_id, student_profile_id)`; seed demo class for V5 accounts.
@@ -104,6 +107,20 @@ Design per README §8: **offline, teacher-reviewed, never in the student loop.**
 - [ ] `backend-java/Dockerfile` (multi-stage maven → JRE 17), `Frontend/Dockerfile` (build → nginx, proxy `/api`).
 - [ ] Extend `docker-compose.yml` to the full stack + `.env.example`; one command `docker compose up` runs the demo.
 - [ ] Optional: deploy to Render/Railway/Fly for a live URL.
+
+**Hosting plan if the frontend goes on Vercel** (Vercel runs static sites and short serverless
+functions — it cannot run the always-on Spring Boot JVM or host Postgres):
+
+| Piece | Where | Notes |
+|---|---|---|
+| React frontend | **Vercel** | Root dir `Frontend`, build `npm run build`, output `dist`. Env `VITE_API_BASE=https://<backend-host>/api` (baked in at build time). |
+| Spring Boot API | **Render / Railway / Fly.io / Koyeb** (Docker from the Phase 6 Dockerfile) | Env: `SPRING_PROFILES_ACTIVE=prod`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS=https://<app>.vercel.app`, DB vars below. Flyway migrates the DB on startup. |
+| PostgreSQL 16 | **Neon / Supabase / Render Postgres** (managed) | Set `SPRING_DATASOURCE_URL=jdbc:postgresql://<host>/<db>?sslmode=require`, `DB_USER`, `DB_PASSWORD` (Spring's env binding overrides the URL built from `DB_HOST`). Use the provider's pooled connection string; keep Hikari pool small (≈5) on free tiers. |
+
+Free-tier caveats: Render free web services sleep after inactivity (first request ~30–60 s); Neon free
+compute also scales to zero (first query slower). Fine for a demo; warm it up before presenting.
+The seeded demo accounts (V5, password `password123`) will exist in production too — remove or
+change them before sharing the URL publicly.
 
 ### Phase 7 — Engagement analytics (stretch; from `next_steps_plan.md` A–D) (≈12 h)
 Only after 0–6. Renumber migrations (V10+), and reuse the plan already written there:

@@ -24,7 +24,7 @@ export default function DashboardPage({ onBack }) {
       <div className="max-w-5xl mx-auto px-6 py-10">
         {role === "TEACHER" && <TeacherDashboard />}
         {role === "PARENT" && <ParentDashboard />}
-        {role === "STUDENT" && <StudentDashboard userEmail={user?.email} />}
+        {role === "STUDENT" && <StudentDashboard />}
       </div>
     </div>
   );
@@ -33,7 +33,7 @@ export default function DashboardPage({ onBack }) {
 // ─────────────────────────────────────────
 // STUDENT VIEW
 // ─────────────────────────────────────────
-function StudentDashboard({ userEmail }) {
+function StudentDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 

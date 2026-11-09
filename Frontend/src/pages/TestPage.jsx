@@ -14,7 +14,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   const [currentQ, setCurrentQ] = useState(null);
   const [shuffledOptions, setShuffledOptions] = useState([]);
   const [eliminatedOptions, setEliminatedOptions] = useState([]); // from X-Ray Vision
-  const [adaptiveInfo, setAdaptiveInfo] = useState(null);
+  const [, setAdaptiveInfo] = useState(null);
   const [bktUpdate, setBktUpdate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -146,7 +146,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     return () => {
       mounted = false;
     };
-  }, [section.id]);
+  }, [section.id, character?.id]);
 
   const [sessionId, setSessionId] = useState(null);
 
@@ -279,6 +279,13 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     }
   };
 
+  // Keyboard handler must call the *current* submit/next (they close over session/question
+  // state), not the ones from whichever render last re-registered the listener.
+  const actionsRef = useRef({ submit, next });
+  useEffect(() => {
+    actionsRef.current = { submit, next };
+  });
+
   // Keyboard navigation (1-4 or Enter)
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -291,10 +298,10 @@ export default function TestPage({ section, character, onFinish, onBack }) {
             setSelected(idx);
           }
         } else if (e.key === "Enter" && selected !== null) {
-          submit();
+          actionsRef.current.submit();
         }
       } else if (e.key === "Enter") {
-        next();
+        actionsRef.current.next();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -354,11 +361,11 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   // Helper to format equations with distinct high-contrast chips
   const formatTextWithEquations = (text) => {
     if (!text) return null;
-    const parts = text.split(/(\b-?\d*x\s*[\+\-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[\+\-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9\-]+,\s*[a-zA-Z0-9\-]+\))/g);
+    const parts = text.split(/(\b-?\d*x\s*[+-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[+-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9-]+,\s*[a-zA-Z0-9-]+\))/g);
     if (parts.length <= 1) return text;
 
     return parts.map((part, i) => {
-      if (part.match(/(\b-?\d*x\s*[\+\-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[\+\-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9\-]+,\s*[a-zA-Z0-9\-]+\))/)) {
+      if (part.match(/(\b-?\d*x\s*[+-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[+-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9-]+,\s*[a-zA-Z0-9-]+\))/)) {
         return (
           <span
             key={i}
