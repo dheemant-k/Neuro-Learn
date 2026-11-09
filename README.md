@@ -778,6 +778,11 @@ However, this will only be considered after the core system has been successfull
 
 This separation ensures that the lack of a suitable engagement dataset or model does not affect the delivery of the core project.
 
+> **Decision (November 2026):** NeuroLearn will **not** show a per-child engagement or ADHD-risk flag.
+> Response-time variability is not specific to ADHD at the individual level, and India's DPDP rules
+> prohibit behavioural monitoring of children. Engagement data is used only for a student's own pacing
+> feedback and class-level aggregates. See [docs/AI_FUTURE_SCOPE.md §6](docs/AI_FUTURE_SCOPE.md).
+
 ---
 
 # 18. Scope Definition

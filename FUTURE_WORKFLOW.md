@@ -45,7 +45,7 @@
 14. BKT P(T) is **0.10** in `COMMIT_HISTORY…md`, **0.15** in README §26, **0.18** in code.
 15. Section unlock uses `P(L) ≥ 0.40 OR 3 correct`, while docs present 0.85 as the mastery gate — explain both thresholds or they look contradictory.
 16. README §18 checklist is entirely unticked though most items are done.
-17. **Scope conflict:** README §17/§19 say engagement/ADHD analytics are *out of scope*; `next_steps_plan.md` says *"the entire remaining scope is the ADHD Engagement Analytics Layer"*. Decide which framing the report uses (see §4).
+17. ~~**Scope conflict:** README §17/§19 vs `next_steps_plan.md` on ADHD engagement analytics.~~ Resolved: option A — no per-child flag (see Phase 7).
 
 ---
 
@@ -94,6 +94,7 @@ Effort in focused hours; adjust to the submission date.
 - Not done (small follow-ups if needed): rename/delete a class, student "leave class", regenerate a leaked join code.
 
 ### Phase 4 — LLM question generation (README guaranteed deliverable) (≈8 h)
+> AI scope, research and proposed re-ordering for Phases 4–9: [docs/AI_FUTURE_SCOPE.md](docs/AI_FUTURE_SCOPE.md). Short version: add a data foundation + server-side grading before generation, and generate hints offline.
 Design per README §8: **offline, teacher-reviewed, never in the student loop.**
 - [ ] `V9__question_review_status.sql`: `questions.status` (`APPROVED` default for existing / `PENDING` / `REJECTED`), `questions.source` (`SEED` / `LLM`), `created_by`.
 - [ ] `ai/QuestionGenerationService` (Spring `RestClient` → Gemini; key from `GEMINI_API_KEY`): prompt with topic, difficulty, character theme, N; strict JSON schema; validate 4 options, 1 correct, dedupe vs existing text; retries.
@@ -127,12 +128,16 @@ compute also scales to zero (first query slower). Fine for a demo; warm it up be
 The seeded demo accounts (V5, password `password123`) will exist in production too — remove or
 change them before sharing the URL publicly.
 
-### Phase 7 — Engagement analytics (stretch; from `next_steps_plan.md` A–D) (≈12 h)
-Only after 0–6. Renumber migrations (V10+), and reuse the plan already written there:
-- [ ] A: `learning_sessions.completion_status` + `@Scheduled` abandonment job (+ `@EnableScheduling`).
-- [ ] B: `AnalyticsService` — response-time mean/σ/z-variance; oscillation `[C,W,C,W]` classifier.
-- [ ] C: composite **Engagement Pattern Flag** (🟢/🟡/🔴) in teacher roster with the *"not a clinical assessment"* tooltip and "flagged only" filter.
-- [ ] D: parent weekly-activity chart + response-time trend.
+### Phase 7 — Learning-pace insights (stretch) (≈8 h)
+**Decided 2026-11-09 (option A in [docs/AI_FUTURE_SCOPE.md §6](docs/AI_FUTURE_SCOPE.md)):** no per-child
+ADHD/engagement flag. RT variability isn't specific to ADHD, and India's DPDP rules prohibit behavioural
+monitoring of children. The ADHD-friendly claim rests on the design (short sessions, instant feedback,
+gamification, calm mode). Only after 0–6; next free migration is V9+.
+- [ ] Session completion status (`IN_PROGRESS` / `COMPLETED` / `ABANDONED`) + `@Scheduled` timeout job — used for the student's own stats and class aggregates.
+- [ ] Student-facing pacing feedback ("you tend to do better after a short break") computed from their own response times — shown to the student only.
+- [ ] Teacher view: **class-level** aggregates only (e.g. "this class often stops during Elimination"); no per-student engagement label.
+- [ ] Parent view: weekly activity (sessions per day) — activity, not a behavioural score.
+- [x] ~~Composite Engagement Pattern Flag (🟢/🟡/🔴) in teacher roster~~ — cancelled.
 
 ### Phase 8 — Content scalability (stretch, ≈8 h) — do before writing Chapter 3
 - [ ] Move chapters/sections/story text into DB (`chapters`, `sections`, `section_briefings` per theme) and serve via `GET /api/curriculum`.
@@ -152,16 +157,16 @@ Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 4 ─► Phase 5 ─► Phase
                                                          └──► Phase 7 ─► Phase 8 ─► Phase 9   ← stretch
 ```
 - **Short on time?** Do 0, 1, 2 (just the success-path + authz tests), 4, 6. Skip 3 and 5 and say so in the report's future work.
-- **Want the ADHD/engagement angle in the report?** Swap Phase 7 ahead of Phase 5, and update README §17/§19 so the report doesn't contradict itself.
+- **ADHD angle in the report:** describe the ADHD-friendly design and why a per-child flag was rejected (evidence + DPDP), per option A.
 
 ## 4. Decisions needed from the team
-1. **Positioning:** keep README's "engagement is future work" or adopt `next_steps_plan.md`'s "engagement analytics is the remaining scope"? (Affects Phase 7's priority and README wording.)
+1. ~~**Positioning** of engagement/ADHD analytics~~ — **decided 2026-11-09: option A** (no per-child flag; see Phase 7).
 2. **Submission date** — determines the cut line above.
 3. **`legacy-python/`** — delete or keep as archive?
 4. **Live deployment** needed, or is `docker compose up` enough for grading?
 
 ## 5. Working conventions going forward
 - **Branch per phase** (`feat/security-hardening`, `feat/llm-questions`, …) → PR → CI green → merge. Stop committing straight to `main`.
-- **Flyway:** never edit an applied migration; next free number is **V8**. Seed data stays in its own migrations.
+- **Flyway:** never edit an applied migration; next free number is **V9**. Seed data stays in its own migrations.
 - **Definition of done per item:** backend tests pass, `npm run lint && npm run build` pass, README/API docs updated, demo account path still works.
 - **One plan file:** update this file's checkboxes as work lands instead of adding new top-level `.md` plans.
