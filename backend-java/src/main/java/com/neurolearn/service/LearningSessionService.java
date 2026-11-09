@@ -5,6 +5,8 @@ import com.neurolearn.adaptive.AdaptiveEngineService;
 import com.neurolearn.adaptive.BktUpdateResult;
 import com.neurolearn.dto.*;
 import com.neurolearn.entity.*;
+import com.neurolearn.exception.ForbiddenException;
+import com.neurolearn.exception.NotFoundException;
 import com.neurolearn.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +46,11 @@ public class LearningSessionService {
 
     private StudentProfile getOrCreateProfileForEmail(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + userEmail));
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (user.getRole() != Role.STUDENT) {
+            // Defence in depth: SecurityConfig already limits /api/sessions to STUDENT.
+            throw new ForbiddenException("Only student accounts can start learning sessions");
+        }
 
         return profileRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
@@ -75,13 +81,24 @@ public class LearningSessionService {
         );
     }
 
-    public NextQuestionResponse getNextAdaptiveQuestion(Long sessionId, String topic) {
-        return getNextAdaptiveQuestion(sessionId, topic, null);
+    /**
+     * Loads a session and checks it belongs to the calling user.
+     * 404 if it doesn't exist, 403 if it belongs to someone else.
+     */
+    private LearningSession getOwnedSession(Long sessionId, String userEmail) {
+        LearningSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new NotFoundException("Session not found: " + sessionId));
+        User caller = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        User owner = session.getStudentProfile().getUser();
+        if (owner == null || !owner.getId().equals(caller.getId())) {
+            throw new ForbiddenException("This session belongs to another student");
+        }
+        return session;
     }
 
-    public NextQuestionResponse getNextAdaptiveQuestion(Long sessionId, String topic, String characterTheme) {
-        LearningSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+    public NextQuestionResponse getNextAdaptiveQuestion(Long sessionId, String userEmail, String topic, String characterTheme) {
+        LearningSession session = getOwnedSession(sessionId, userEmail);
 
         StudentProfile profile = session.getStudentProfile();
         List<QuestionAttempt> sessionAttempts = attemptRepository.findBySessionId(sessionId);
@@ -161,12 +178,14 @@ public class LearningSessionService {
 
     @Transactional
     public QuestionAttemptResponse recordAttempt(Long sessionId, String userEmail, QuestionAttemptRequest request) {
-        LearningSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+        LearningSession session = getOwnedSession(sessionId, userEmail);
 
         StudentProfile profile = session.getStudentProfile();
+        if (request.getQuestionId() == null) {
+            throw new IllegalArgumentException("questionId is required");
+        }
         Question question = questionRepository.findById(request.getQuestionId())
-                .orElseThrow(() -> new IllegalArgumentException("Question not found: " + request.getQuestionId()));
+                .orElseThrow(() -> new NotFoundException("Question not found: " + request.getQuestionId()));
 
         QuestionAttempt attempt = new QuestionAttempt();
         attempt.setSession(session);
@@ -228,8 +247,7 @@ public class LearningSessionService {
 
     @Transactional
     public SessionCompleteResponse completeSession(Long sessionId, String userEmail) {
-        LearningSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+        LearningSession session = getOwnedSession(sessionId, userEmail);
 
         StudentProfile profile = session.getStudentProfile();
         List<QuestionAttempt> attempts = attemptRepository.findBySessionId(sessionId);

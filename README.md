@@ -12,6 +12,29 @@ The primary goal is to build a **reliable, deployable full-stack application** u
 
 ---
 
+## Quick start
+
+Needs Docker, Java 17+ and Node 20+.
+
+```bash
+docker compose up -d
+```
+
+```bash
+cd backend-java && ./mvnw spring-boot:run
+```
+
+```bash
+cd Frontend && npm install && npm run dev
+```
+
+- Postgres runs on `localhost:5433`; Flyway creates the schema and seeds questions + demo accounts on first backend start.
+- Backend: `http://localhost:8080/api` (health check: `/api/health`). Frontend: `http://localhost:5173`.
+- Demo logins (password `password123`): `bruce@neurolearn.com` (student), `teacher@neurolearn.com`, `parent@neurolearn.com`.
+- Roadmap and open work: [FUTURE_WORKFLOW.md](FUTURE_WORKFLOW.md). Older planning notes: [docs/history/](docs/history/).
+
+---
+
 # 1. Problem Statement
 
 Most digital learning platforms provide students with a relatively fixed sequence of questions or content.
@@ -762,24 +785,26 @@ This separation ensures that the lack of a suitable engagement dataset or model 
 
 ### Core Platform
 
-- [ ] React frontend
-- [ ] Java Spring Boot backend
-- [ ] PostgreSQL database
-- [ ] Authentication
-- [ ] Role-based authorization
-- [ ] Student profile
-- [ ] Question bank
-- [ ] Learning sessions
-- [ ] Question attempts
-- [ ] Performance tracking
-- [ ] Adaptive difficulty engine
-- [ ] Persistent learning history
-- [ ] Student dashboard
-- [ ] Teacher dashboard
-- [ ] Parent dashboard
-- [ ] REST API integration
-- [ ] Deployment
-- [ ] Testing
+> Status as of November 2026. Open items are planned in [FUTURE_WORKFLOW.md](FUTURE_WORKFLOW.md).
+
+- [x] React frontend
+- [x] Java Spring Boot backend
+- [x] PostgreSQL database
+- [x] Authentication
+- [ ] Role-based authorization *(roles exist; endpoints are not enforced yet — Phase 1)*
+- [x] Student profile
+- [x] Question bank
+- [x] Learning sessions
+- [x] Question attempts
+- [x] Performance tracking
+- [x] Adaptive difficulty engine
+- [x] Persistent learning history
+- [x] Student dashboard
+- [x] Teacher dashboard
+- [x] Parent dashboard
+- [x] REST API integration
+- [ ] Deployment *(Postgres only in Docker so far — Phase 6)*
+- [ ] Testing *(BKT unit tests only — Phase 2)*
 
 ### AI
 
@@ -1054,10 +1079,13 @@ $$P(L_{t+1}) = P(L_t \mid \text{Obs}_t) + (1 - P(L_t \mid \text{Obs}_t)) \cdot P
 
 Where:
 - **\( P(L_0) = 0.20 \)**: Prior probability of knowing the skill initially.
-- **\( P(T) = 0.15 \)**: Probability of transitioning from unlearned to learned state after an attempt.
+- **\( P(T) = 0.18 \)**: Probability of transitioning from unlearned to learned state after an attempt.
 - **\( P(G) = 0.25 \)**: Guess probability (correct answer despite not knowing the skill, 4-choice MCQ).
 - **\( P(S) = 0.10 \)**: Slip probability (incorrect answer despite knowing the skill).
-- **Mastery Threshold**: \( P(L) \ge 0.85 \) (Bloom's Mastery Learning Criterion).
+- **Mastery Threshold**: \( P(L) \ge 0.85 \) (Bloom's Mastery Learning Criterion). Shown as "Mastered" on dashboards.
+- **Section Unlock Threshold**: \( P(L) \ge 0.40 \) *or* 3 correct answers. Deliberately lower than mastery so a student can move on to the next roadmap section before fully mastering the current one; mastery keeps being tracked.
+
+These values live in `BktParameters.defaultParameters()` and `ProgressService`; keep this list in sync with the code.
 
 ### 26.2 Academic Citations
 

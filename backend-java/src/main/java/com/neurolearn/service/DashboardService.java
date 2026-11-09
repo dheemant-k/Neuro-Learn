@@ -2,6 +2,7 @@ package com.neurolearn.service;
 
 import com.neurolearn.dto.DashboardResponse;
 import com.neurolearn.entity.*;
+import com.neurolearn.exception.NotFoundException;
 import com.neurolearn.repository.*;
 import org.springframework.stereotype.Service;
 
@@ -28,31 +29,20 @@ public class DashboardService {
         this.topicProgressRepository = topicProgressRepository;
     }
 
+    /**
+     * The caller's own dashboard. A student with no profile yet gets an empty dashboard;
+     * it never falls back to another student's data.
+     */
     public DashboardResponse getDashboardData(String userEmail) {
-        StudentProfile profile = null;
-        if (userEmail != null && !userEmail.isBlank()) {
-            Optional<User> userOpt = userRepository.findByEmail(userEmail);
-            if (userOpt.isPresent()) {
-                profile = profileRepository.findByUserId(userOpt.get().getId()).orElse(null);
-            }
-        }
-        if (profile == null) {
-            List<StudentProfile> all = profileRepository.findAll();
-            if (!all.isEmpty()) {
-                profile = all.get(0);
-            }
-        }
-
+        StudentProfile profile = userRepository.findByEmail(userEmail)
+                .flatMap(user -> profileRepository.findByUserId(user.getId()))
+                .orElse(null);
         return buildDashboardForProfile(profile);
     }
 
     public DashboardResponse getDashboardDataByProfileId(Long profileId) {
-        StudentProfile profile = profileRepository.findById(profileId).orElse(null);
-        return buildDashboardForProfile(profile);
-    }
-
-    public DashboardResponse getDashboardDataByUserId(Long userId) {
-        StudentProfile profile = profileRepository.findByUserId(userId).orElse(null);
+        StudentProfile profile = profileRepository.findById(profileId)
+                .orElseThrow(() -> new NotFoundException("Student not found: " + profileId));
         return buildDashboardForProfile(profile);
     }
 

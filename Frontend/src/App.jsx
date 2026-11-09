@@ -8,10 +8,14 @@ import FeedbackPage from "./pages/FeedbackPage";
 import DashboardPage from "./pages/DashboardPage";
 import AuthPage from "./pages/AuthPage";
 import BossFightPage from "./pages/BossFightPage";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // pages: home | roadmap | learn | test | feedback | dashboard | auth | boss
+// Everything except home and auth needs a login (the backend enforces this too).
+const PUBLIC_PAGES = new Set(["home", "auth"]);
+
 function AppContent() {
+  const { isAuthenticated, role, loading } = useAuth();
   const [page, setPage] = useState("home");
   const [character, setCharacter] = useState(null);
   const [chapter, setChapter] = useState(null);
@@ -27,12 +31,25 @@ function AppContent() {
     setBossConfig(null);
   };
 
+  // Token expired or user logged out while on a protected page → show login instead.
+  const view = !loading && !isAuthenticated && !PUBLIC_PAGES.has(page) ? "auth" : page;
+
   const goRoadmap = () => setPage("roadmap");
 
   const handleSelectChapter = (ch) => {
+    if (!isAuthenticated) {
+      setPage("auth");
+      return;
+    }
+    if (role !== "STUDENT") {
+      window.alert("Quests are for student accounts. Teachers and parents can follow progress from the dashboard.");
+      return;
+    }
     setChapter(ch);
     setPage("roadmap");
   };
+
+  const handleOpenDashboard = () => setPage(isAuthenticated ? "dashboard" : "auth");
 
   const handleLearn = (sec) => {
     setSection(sec);
@@ -57,19 +74,19 @@ function AppContent() {
   return (
     <>
       <PixelCursor />
-      {page === "home" && (
+      {view === "home" && (
         <HomePage
           selectedCharacter={character}
           onSelectCharacter={setCharacter}
           onSelectChapter={handleSelectChapter}
-          onDashboard={() => setPage("dashboard")}
+          onDashboard={handleOpenDashboard}
           onGoAuth={() => setPage("auth")}
         />
       )}
-      {page === "auth" && (
+      {view === "auth" && (
         <AuthPage onLoginSuccess={() => setPage("home")} onBack={goHome} />
       )}
-      {page === "roadmap" && chapter && character && (
+      {view === "roadmap" && chapter && character && (
         <RoadmapPage
           chapter={chapter}
           character={character}
@@ -79,7 +96,7 @@ function AppContent() {
           onBack={goHome}
         />
       )}
-      {page === "learn" && section && character && (
+      {view === "learn" && section && character && (
         <LearnPage
           section={section}
           character={character}
@@ -87,7 +104,7 @@ function AppContent() {
           onBack={goRoadmap}
         />
       )}
-      {page === "test" && section && character && (
+      {view === "test" && section && character && (
         <TestPage
           section={section}
           character={character}
@@ -95,7 +112,7 @@ function AppContent() {
           onBack={goRoadmap}
         />
       )}
-      {page === "feedback" && section && character && testResults && (
+      {view === "feedback" && section && character && testResults && (
         <FeedbackPage
           section={section}
           character={character}
@@ -103,7 +120,7 @@ function AppContent() {
           onContinue={goRoadmap}
         />
       )}
-      {page === "boss" && character && (
+      {view === "boss" && character && (
         <BossFightPage
           character={character}
           chapter={chapter}
@@ -113,7 +130,7 @@ function AppContent() {
           onBack={goRoadmap}
         />
       )}
-      {page === "dashboard" && (
+      {view === "dashboard" && (
         <DashboardPage onBack={goHome} />
       )}
     </>

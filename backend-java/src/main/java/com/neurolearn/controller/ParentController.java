@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+/** PARENT only (see SecurityConfig). Report cards are limited to linked children by ParentService. */
 @RestController
 @RequestMapping("/api/parent")
 public class ParentController {
@@ -27,27 +28,13 @@ public class ParentController {
             @RequestBody ParentLinkRequest request,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        String parentEmail = userDetails != null ? userDetails.getUsername() : null;
-        if (parentEmail == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-        try {
-            String message = parentService.linkChild(parentEmail, request.getStudentEmail());
-            return ResponseEntity.ok(Map.of("message", message));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-        }
+        String message = parentService.linkChild(userDetails.getUsername(), request.getStudentEmail());
+        return ResponseEntity.ok(Map.of("message", message));
     }
 
     @GetMapping("/children")
-    public ResponseEntity<List<ParentChildSummaryDto>> getLinkedChildren(
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        String email = userDetails != null ? userDetails.getUsername() : null;
-        if (email == null) {
-            return ResponseEntity.status(401).build();
-        }
-        return ResponseEntity.ok(parentService.getLinkedChildren(email));
+    public ResponseEntity<List<ParentChildSummaryDto>> getLinkedChildren(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(parentService.getLinkedChildren(userDetails.getUsername()));
     }
 
     @GetMapping("/child/{studentProfileId}")
@@ -55,14 +42,6 @@ public class ParentController {
             @PathVariable Long studentProfileId,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        String email = userDetails != null ? userDetails.getUsername() : null;
-        if (email == null) {
-            return ResponseEntity.status(401).build();
-        }
-        try {
-            return ResponseEntity.ok(parentService.getChildReportCard(email, studentProfileId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).build();
-        }
+        return ResponseEntity.ok(parentService.getChildReportCard(userDetails.getUsername(), studentProfileId));
     }
 }

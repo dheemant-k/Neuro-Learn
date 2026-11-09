@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/** STUDENT only (see SecurityConfig). */
 @RestController
 @RequestMapping("/api/progress")
 public class ProgressController {
@@ -24,8 +25,7 @@ public class ProgressController {
             @RequestParam(required = false, defaultValue = "linear_eq_2var") String chapterId,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        String email = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(progressService.getProgress(email, chapterId));
+        return ResponseEntity.ok(progressService.getProgress(userDetails.getUsername(), chapterId));
     }
 
     @PostMapping("/boss-victory")
@@ -33,9 +33,8 @@ public class ProgressController {
             @RequestBody(required = false) Map<String, String> body,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        String email = userDetails != null ? userDetails.getUsername() : null;
-        String bossTopic = body != null ? body.get("bossTopic") : "final_boss";
-        String chapterId = body != null ? body.get("chapterId") : "linear_eq_2var";
-        return ResponseEntity.ok(progressService.awardBossDefeatBonus(email, bossTopic, chapterId));
+        String bossTopic = body != null && body.get("bossTopic") != null ? body.get("bossTopic") : "final_boss";
+        String chapterId = body != null && body.get("chapterId") != null ? body.get("chapterId") : "linear_eq_2var";
+        return ResponseEntity.ok(progressService.awardBossDefeatBonus(userDetails.getUsername(), bossTopic, chapterId));
     }
 }

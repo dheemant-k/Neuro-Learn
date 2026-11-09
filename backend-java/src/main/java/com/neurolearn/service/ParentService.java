@@ -7,6 +7,8 @@ import com.neurolearn.entity.ParentStudentLink;
 import com.neurolearn.entity.Role;
 import com.neurolearn.entity.StudentProfile;
 import com.neurolearn.entity.User;
+import com.neurolearn.exception.ForbiddenException;
+import com.neurolearn.exception.NotFoundException;
 import com.neurolearn.repository.ParentStudentLinkRepository;
 import com.neurolearn.repository.StudentProfileRepository;
 import com.neurolearn.repository.UserRepository;
@@ -37,17 +39,17 @@ public class ParentService {
 
     public String linkChild(String parentEmail, String studentEmail) {
         User parent = userRepository.findByEmail(parentEmail)
-                .orElseThrow(() -> new RuntimeException("Parent account not found"));
+                .orElseThrow(() -> new NotFoundException("Parent account not found"));
 
         if (parent.getRole() != Role.PARENT) {
-            throw new RuntimeException("Only PARENT accounts can link children");
+            throw new ForbiddenException("Only PARENT accounts can link children");
         }
 
         User student = userRepository.findByEmail(studentEmail)
-                .orElseThrow(() -> new RuntimeException("No student account found with email: " + studentEmail));
+                .orElseThrow(() -> new IllegalArgumentException("No student account found with email: " + studentEmail));
 
         if (student.getRole() != Role.STUDENT) {
-            throw new RuntimeException("The account with email " + studentEmail + " is not a STUDENT account");
+            throw new IllegalArgumentException("The account with email " + studentEmail + " is not a STUDENT account");
         }
 
         if (linkRepository.existsByParentIdAndStudentId(parent.getId(), student.getId())) {
@@ -61,7 +63,7 @@ public class ParentService {
 
     public List<ParentChildSummaryDto> getLinkedChildren(String parentEmail) {
         User parent = userRepository.findByEmail(parentEmail)
-                .orElseThrow(() -> new RuntimeException("Parent not found"));
+                .orElseThrow(() -> new NotFoundException("Parent not found"));
 
         List<ParentStudentLink> links = linkRepository.findByParentId(parent.getId());
         List<ParentChildSummaryDto> result = new ArrayList<>();
@@ -101,14 +103,14 @@ public class ParentService {
 
     public ChildReportCardResponse getChildReportCard(String parentEmail, Long studentProfileId) {
         User parent = userRepository.findByEmail(parentEmail)
-                .orElseThrow(() -> new RuntimeException("Parent not found"));
+                .orElseThrow(() -> new NotFoundException("Parent not found"));
 
         StudentProfile profile = studentProfileRepository.findById(studentProfileId)
-                .orElseThrow(() -> new RuntimeException("Student profile not found"));
+                .orElseThrow(() -> new NotFoundException("Student profile not found"));
 
         // Verify the parent is linked to this student
         if (!linkRepository.existsByParentIdAndStudentId(parent.getId(), profile.getUser().getId())) {
-            throw new RuntimeException("You are not linked to this student");
+            throw new ForbiddenException("You are not linked to this student");
         }
 
         DashboardResponse dashboard = dashboardService.buildDashboardForProfile(profile);

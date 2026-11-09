@@ -9,28 +9,31 @@ function getAuthHeaders() {
   return headers;
 }
 
-async function post(path, body) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(body),
-  });
+// Fired when the backend rejects our token (expired / invalid). AuthContext listens and logs out.
+export const UNAUTHORIZED_EVENT = "neurolearn:unauthorized";
+
+async function request(path, options = {}) {
+  const res = await fetch(`${BASE}${path}`, { ...options, headers: getAuthHeaders() });
   if (!res.ok) {
-    const errObj = await res.json().catch(() => ({ message: "Unknown error" }));
-    throw new Error(errObj.message || `API ${path} failed with status ${res.status}`);
+    if (res.status === 401 && localStorage.getItem("neurolearn_token")) {
+      localStorage.removeItem("neurolearn_token");
+      localStorage.removeItem("neurolearn_user");
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
+    const errObj = await res.json().catch(() => ({}));
+    const err = new Error(errObj.message || `API ${path} failed with status ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
 
-async function get(path) {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const errObj = await res.json().catch(() => ({ message: "Unknown error" }));
-    throw new Error(errObj.message || `API ${path} failed with status ${res.status}`);
-  }
-  return res.json();
+function post(path, body) {
+  return request(path, { method: "POST", body: JSON.stringify(body) });
+}
+
+function get(path) {
+  return request(path);
 }
 
 // -------------------------------------------------------------
@@ -119,7 +122,7 @@ export async function claimBossVictory(bossTopic = "final_boss", chapterId = "li
 // -------------------------------------------------------------
 // Dashboard API (Spring Boot)
 // -------------------------------------------------------------
-export async function getDashboard(studentId = "") {
+export async function getDashboard() {
   return get(`/dashboard`);
 }
 
