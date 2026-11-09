@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface TopicProgressRepository extends JpaRepository<TopicProgress, Long> {
     Optional<TopicProgress> findByStudentProfileIdAndTopic(Long studentProfileId, String topic);
     List<TopicProgress> findByStudentProfileId(Long studentProfileId);
+    List<TopicProgress> findByStudentProfileIdIn(java.util.Collection<Long> studentProfileIds);
 }

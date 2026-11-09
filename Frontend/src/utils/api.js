@@ -25,6 +25,7 @@ async function request(path, options = {}) {
     err.status = res.status;
     throw err;
   }
+  if (res.status === 204) return null;
   return res.json();
 }
 
@@ -34,6 +35,10 @@ function post(path, body) {
 
 function get(path) {
   return request(path);
+}
+
+function del(path) {
+  return request(path, { method: "DELETE" });
 }
 
 // -------------------------------------------------------------
@@ -129,12 +134,36 @@ export async function getDashboard() {
 // -------------------------------------------------------------
 // Teacher Analytics APIs
 // -------------------------------------------------------------
-export async function fetchTeacherAnalytics() {
-  return get("/teacher/analytics");
+// classId omitted/null → all of the teacher's classes
+export async function fetchTeacherAnalytics(classId = null) {
+  return get(classId ? `/teacher/analytics?classId=${encodeURIComponent(classId)}` : "/teacher/analytics");
 }
 
 export async function fetchTeacherStudentDashboard(studentProfileId) {
   return get(`/teacher/student/${studentProfileId}`);
+}
+
+export async function fetchTeacherClasses() {
+  return get("/teacher/classes");
+}
+
+export async function createTeacherClass(name) {
+  return post("/teacher/classes", { name });
+}
+
+export async function removeStudentFromClass(classId, studentProfileId) {
+  return del(`/teacher/classes/${classId}/students/${studentProfileId}`);
+}
+
+// -------------------------------------------------------------
+// Student Classes APIs
+// -------------------------------------------------------------
+export async function fetchMyClasses() {
+  return get("/student/classes");
+}
+
+export async function joinClass(joinCode) {
+  return post("/student/classes/join", { joinCode });
 }
 
 // -------------------------------------------------------------

@@ -1,5 +1,17 @@
 import { useEffect, useState } from "react";
-import { getDashboard, fetchTeacherAnalytics, fetchTeacherStudentDashboard, linkChild, fetchParentChildren, fetchChildReportCard } from "../utils/api";
+import {
+  getDashboard,
+  fetchTeacherAnalytics,
+  fetchTeacherStudentDashboard,
+  fetchTeacherClasses,
+  createTeacherClass,
+  removeStudentFromClass,
+  fetchMyClasses,
+  joinClass,
+  linkChild,
+  fetchParentChildren,
+  fetchChildReportCard,
+} from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import { chapters } from "../data/chapters";
 
@@ -24,7 +36,12 @@ export default function DashboardPage({ onBack }) {
       <div className="max-w-5xl mx-auto px-6 py-10">
         {role === "TEACHER" && <TeacherDashboard />}
         {role === "PARENT" && <ParentDashboard />}
-        {role === "STUDENT" && <StudentDashboard />}
+        {role === "STUDENT" && (
+          <>
+            <StudentClassesPanel />
+            <StudentDashboard />
+          </>
+        )}
       </div>
     </div>
   );
@@ -128,13 +145,56 @@ function TeacherDashboard() {
   const [studentName, setStudentName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingStudent, setLoadingStudent] = useState(false);
+  const [classes, setClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState(null); // null = all my classes
+  const [reloadKey, setReloadKey] = useState(0);
 
   const sectionTitleMap = {};
   chapters.forEach((ch) => ch.sections.forEach((s) => { sectionTitleMap[s.id] = s.title; }));
 
   useEffect(() => {
-    fetchTeacherAnalytics().then(setAnalytics).catch(() => setAnalytics(null)).finally(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+    fetchTeacherAnalytics(selectedClassId)
+      .then((data) => { if (!cancelled) setAnalytics(data); })
+      .catch(() => { if (!cancelled) setAnalytics(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedClassId, reloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTeacherClasses()
+      .then((data) => { if (!cancelled) setClasses(data || []); })
+      .catch(() => { if (!cancelled) setClasses([]); });
+    return () => { cancelled = true; };
+  }, [reloadKey]);
+
+  const refresh = () => setReloadKey((k) => k + 1);
+
+  const selectClass = (classId) => {
+    if (classId === selectedClassId) return;
+    setLoading(true);
+    setSelectedClassId(classId);
+  };
+
+  const handleCreateClass = async (name) => {
+    const created = await createTeacherClass(name);
+    setLoading(true);
+    setSelectedClassId(created.id);
+    refresh();
+    return created;
+  };
+
+  const handleRemove = async (student) => {
+    const cls = classes.find((c) => c.id === selectedClassId);
+    if (!window.confirm(`Remove ${student.name} from ${cls?.name || "this class"}?`)) return;
+    try {
+      await removeStudentFromClass(selectedClassId, student.studentProfileId);
+      refresh();
+    } catch (e) {
+      window.alert(e.message);
+    }
+  };
 
   const handleInspect = (student) => {
     setInspecting(student.studentProfileId);
@@ -147,8 +207,30 @@ function TeacherDashboard() {
       .finally(() => setLoadingStudent(false));
   };
 
-  if (loading) return <LoadingSpinner label="Loading class analytics..." />;
-  if (!analytics) return <div className="text-center py-20 text-rose-400">Failed to load analytics.</div>;
+  const classPanel = (
+    <ClassPanel
+      classes={classes}
+      selectedClassId={selectedClassId}
+      onSelect={selectClass}
+      onCreate={handleCreateClass}
+    />
+  );
+
+  if (loading) return <>{classPanel}<LoadingSpinner label="Loading class analytics..." /></>;
+  if (!analytics) return <>{classPanel}<div className="text-center py-20 text-rose-400">Failed to load analytics.</div></>;
+
+  if (classes.length === 0 && analytics.totalStudents === 0) {
+    return (
+      <>
+        {classPanel}
+        <div className="text-center py-16">
+          <div className="text-4xl mb-4">🏫</div>
+          <div className="pixel-heading text-xl">No students yet</div>
+          <p className="mt-2 text-slate-300/80">Create a class above, then share its join code. Students enter it on their dashboard.</p>
+        </div>
+      </>
+    );
+  }
 
   const filteredRoster = (analytics.studentRoster || []).filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -157,6 +239,7 @@ function TeacherDashboard() {
 
   return (
     <>
+      {classPanel}
       {/* Class overview cards */}
       <div className="pixel-heading text-2xl">Class Overview</div>
       <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -171,6 +254,9 @@ function TeacherDashboard() {
       <div className="mt-10">
         <div className="pixel-heading text-xl">Curriculum Bottleneck Analysis</div>
         <div className="mt-4 space-y-3">
+          {(analytics.topicBottlenecks || []).length === 0 && (
+            <p className="text-sm text-slate-400">No quiz attempts from these students yet.</p>
+          )}
           {(analytics.topicBottlenecks || []).map((tb, i) => (
             <div key={i} className={`rounded-2xl border-2 p-4 ${tb.bottleneckAlert ? "border-rose-500/60 bg-rose-950/30" : "border-[rgba(48,68,105,0.9)] bg-[rgba(15,23,42,0.72)]"}`}>
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -239,13 +325,21 @@ function TeacherDashboard() {
                         "bg-rose-500/20 text-rose-300 border border-rose-500/40"
                       }`}>{s.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
                       <button
                         onClick={() => handleInspect(s)}
                         className="px-3 py-1 rounded-lg border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/25 text-sky-300 text-xs transition"
                       >
                         Inspect
                       </button>
+                      {selectedClassId && (
+                        <button
+                          onClick={() => handleRemove(s)}
+                          className="ml-2 px-3 py-1 rounded-lg border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 text-xs transition"
+                        >
+                          Remove
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -272,6 +366,156 @@ function TeacherDashboard() {
         </div>
       )}
     </>
+  );
+}
+
+// Class switcher + join codes + "create class" form for the teacher view.
+function ClassPanel({ classes, selectedClassId, onSelect, onCreate }) {
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState(null); // { type: "success"|"error", msg }
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setCreating(true);
+    setMessage(null);
+    try {
+      const created = await onCreate(name.trim());
+      setMessage({ type: "success", msg: `Created "${created.name}". Share join code ${created.joinCode} with your students.` });
+      setName("");
+    } catch (err) {
+      setMessage({ type: "error", msg: err.message });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const chip = (active) =>
+    `px-3 py-2 rounded-xl border text-sm transition text-left ${
+      active
+        ? "border-sky-400/80 bg-sky-500/20 text-sky-200"
+        : "border-[rgba(48,68,105,0.8)] bg-[rgba(13,26,58,0.55)] hover:bg-[rgba(13,26,58,0.85)] text-slate-300"
+    }`;
+
+  return (
+    <div className="mb-10 rounded-2xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(15,23,42,0.72)] p-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="pixel-heading text-xl">My Classes</div>
+        <form onSubmit={submit} className="flex gap-2">
+          <input
+            type="text"
+            value={name}
+            maxLength={100}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="New class name"
+            aria-label="New class name"
+            className="px-3 py-2 rounded-xl border border-[rgba(48,68,105,0.8)] bg-[rgba(13,26,58,0.55)] text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500/60 w-48"
+          />
+          <button
+            type="submit"
+            disabled={creating || !name.trim()}
+            className="px-4 py-2 rounded-xl bg-[rgb(94,234,212)] text-slate-900 text-sm font-semibold hover:brightness-110 transition disabled:opacity-50"
+          >
+            {creating ? "Creating..." : "+ Create"}
+          </button>
+        </form>
+      </div>
+
+      {message && (
+        <p className={`mt-3 text-sm ${message.type === "success" ? "text-emerald-300" : "text-rose-300"}`}>{message.msg}</p>
+      )}
+
+      {classes.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button onClick={() => onSelect(null)} className={chip(selectedClassId === null)}>
+            All classes
+          </button>
+          {classes.map((c) => (
+            <button key={c.id} onClick={() => onSelect(c.id)} className={chip(selectedClassId === c.id)}>
+              <div className="font-semibold">{c.name}</div>
+              <div className="text-xs text-slate-400">
+                Code <span className="font-mono text-yellow-300 tracking-widest">{c.joinCode}</span> · {c.studentCount} student{c.studentCount === 1 ? "" : "s"}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// "Join a class" box + list of the student's classes.
+function StudentClassesPanel() {
+  const [classes, setClasses] = useState([]);
+  const [code, setCode] = useState("");
+  const [joining, setJoining] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyClasses()
+      .then((data) => { if (!cancelled) setClasses(data || []); })
+      .catch(() => { if (!cancelled) setClasses([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setJoining(true);
+    setMessage(null);
+    try {
+      const joined = await joinClass(code.trim());
+      setClasses((prev) => (prev.some((c) => c.id === joined.id) ? prev : [...prev, joined]));
+      setMessage({ type: "success", msg: `You're in ${joined.name} (${joined.teacherName}).` });
+      setCode("");
+    } catch (err) {
+      setMessage({ type: "error", msg: err.message });
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  return (
+    <div className="mb-10 rounded-2xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(15,23,42,0.72)] p-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="pixel-heading text-xl">My Classes</div>
+        <form onSubmit={submit} className="flex gap-2">
+          <input
+            type="text"
+            value={code}
+            maxLength={12}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="Join code"
+            aria-label="Class join code"
+            className="px-3 py-2 rounded-xl border border-[rgba(48,68,105,0.8)] bg-[rgba(13,26,58,0.55)] text-sm font-mono tracking-widest text-slate-200 placeholder-slate-500 placeholder:font-sans placeholder:tracking-normal focus:outline-none focus:border-sky-500/60 w-36"
+          />
+          <button
+            type="submit"
+            disabled={joining || !code.trim()}
+            className="px-4 py-2 rounded-xl bg-[rgb(94,234,212)] text-slate-900 text-sm font-semibold hover:brightness-110 transition disabled:opacity-50"
+          >
+            {joining ? "Joining..." : "Join"}
+          </button>
+        </form>
+      </div>
+      {message && (
+        <p className={`mt-3 text-sm ${message.type === "success" ? "text-emerald-300" : "text-rose-300"}`}>{message.msg}</p>
+      )}
+      {classes.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {classes.map((c) => (
+            <div key={c.id} className="px-3 py-2 rounded-xl border border-[rgba(48,68,105,0.8)] bg-[rgba(13,26,58,0.55)] text-sm">
+              <div className="font-semibold text-slate-200">{c.name}</div>
+              <div className="text-xs text-slate-400">{c.teacherName}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-slate-400">Not in a class yet. Ask your teacher for the join code so they can follow your progress.</p>
+      )}
+    </div>
   );
 }
 

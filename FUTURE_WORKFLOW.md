@@ -72,7 +72,7 @@ Effort in focused hours; adjust to the submission date.
 - [x] Global `@RestControllerAdvice` → `ApiError` JSON for 400/403/404/500.
 - [x] Frontend: 401 clears the token and shows the login page; picking a chapter or the dashboard while logged out goes to login; non-students are told quests are student-only; `TestPage` no longer borrows session id 1.
 - Verified live: 39 role/ownership checks (anon, student, second student, teacher, parent) all as expected; `mvnw test` 6/6; student demo login → roadmap → adaptive quiz works.
-- Known gaps, left for later phases: teachers still see every student (Phase 3 classes); the client still decides `correct` and receives `correctAnswer` with each question, so answers can be faked (fold into Phase 2/4 — check answers server-side).
+- Known gaps, left for later phases: ~~teachers still see every student~~ (fixed in Phase 3); the client still decides `correct` and receives `correctAnswer` with each question, so answers can be faked (fold into Phase 2/4 — check answers server-side).
 
 ### Phase 2 — Test & CI foundation (≈8 h)
 - [x] Testcontainers (Postgres 16, pinned to Testcontainers 1.21.4 for Docker Engine 29). `mvnw verify` needs only Docker — no manual DB.
@@ -85,8 +85,13 @@ Effort in focused hours; adjust to the submission date.
 - Total: 52 backend tests passing.
 
 ### Phase 3 — Teacher classes (≈6 h) — makes the teacher dashboard honest
-- [ ] `V8__add_classes.sql`: `classes(id, teacher_user_id, name, join_code)` + `class_enrollments(class_id, student_profile_id)`; seed demo class for V5 accounts.
-- [ ] Student joins via join code; `TeacherService` scopes all queries to the teacher's classes; class switcher in Teacher dashboard.
+- [x] `V8__add_classes.sql`: `classes` + `class_enrollments`; demo class "Gotham Academy · Algebra 1" (code `GOTHAM`) with Bruce, Dick, Jason for the V5 teacher.
+- [x] `ClassService` owns the rule "a teacher only sees students in their own classes". Roster **and** topic bottlenecks are scoped; drill-down is 403 for other teachers' students, 404 for unknown ones.
+- [x] Teacher API: `GET/POST /api/teacher/classes`, `GET /api/teacher/analytics?classId=` (omit for all classes), `DELETE /api/teacher/classes/{id}/students/{studentProfileId}`. Join codes: 6 chars, no 0/O/1/I/L, unique.
+- [x] Student API: `POST /api/student/classes/join` (case-insensitive, joining twice is harmless), `GET /api/student/classes`.
+- [x] UI: teacher "My Classes" panel (switcher, join codes, create form, Remove in roster); student "My Classes" panel with a join box. Empty classes show "no attempts yet" instead of placeholder topics.
+- [x] `ClassIntegrationTest` (6 cases). Total: 58 backend tests. Checked in the browser: create class → student joins with lowercase code → teacher sees and removes them.
+- Not done (small follow-ups if needed): rename/delete a class, student "leave class", regenerate a leaked join code.
 
 ### Phase 4 — LLM question generation (README guaranteed deliverable) (≈8 h)
 Design per README §8: **offline, teacher-reviewed, never in the student loop.**
