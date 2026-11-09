@@ -14,7 +14,7 @@ The primary goal is to build a **reliable, deployable full-stack application** u
 
 ## Quick start
 
-Needs Docker, Java 17+ and Node 20+.
+Needs Docker, Java 17+ (`JAVA_HOME` must point at it — Java 8 can't build this) and Node 20.19+.
 
 ```bash
 docker compose up -d
@@ -31,6 +31,7 @@ cd Frontend && npm install && npm run dev
 - Postgres runs on `localhost:5433`; Flyway creates the schema and seeds questions + demo accounts on first backend start.
 - Backend: `http://localhost:8080/api` (health check: `/api/health`). Frontend: `http://localhost:5173`.
 - Demo logins (password `password123`): `bruce@neurolearn.com` (student), `teacher@neurolearn.com`, `parent@neurolearn.com`.
+- Tests: `cd backend-java && ./mvnw verify` (starts its own throwaway Postgres via Testcontainers — Docker must be running). Frontend checks: `npm run lint && npm run build`. CI runs both on every PR.
 - Roadmap and open work: [FUTURE_WORKFLOW.md](FUTURE_WORKFLOW.md). Older planning notes: [docs/history/](docs/history/).
 
 ---

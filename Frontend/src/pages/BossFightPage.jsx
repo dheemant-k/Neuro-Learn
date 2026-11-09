@@ -16,11 +16,11 @@ import {
 // Helper to format equations with distinct high-contrast chips
 function formatTextWithEquations(text) {
   if (!text) return null;
-  const parts = text.split(/(\b-?\d*x\s*[\+\-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[\+\-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9\-]+,\s*[a-zA-Z0-9\-]+\))/g);
+  const parts = text.split(/(\b-?\d*x\s*[+-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[+-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9-]+,\s*[a-zA-Z0-9-]+\))/g);
   if (parts.length <= 1) return text;
 
   return parts.map((part, i) => {
-    if (part.match(/(\b-?\d*x\s*[\+\-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[\+\-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9\-]+,\s*[a-zA-Z0-9\-]+\))/)) {
+    if (part.match(/(\b-?\d*x\s*[+-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[+-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9-]+,\s*[a-zA-Z0-9-]+\))/)) {
       return (
         <span
           key={i}
@@ -108,7 +108,7 @@ export default function BossFightPage({ character, chapter, bossConfig, onVictor
     return () => {
       mounted = false;
     };
-  }, [heroId]);
+  }, [heroId, bossTopic]);
 
   const displayBossQuestion = (q) => {
     setCurrentQ(q);

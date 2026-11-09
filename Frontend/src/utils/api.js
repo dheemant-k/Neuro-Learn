@@ -155,7 +155,7 @@ export async function fetchChildReportCard(studentProfileId) {
 // -------------------------------------------------------------
 // Story & Feedback APIs (Dynamic Character Lore & Mission Engine)
 // -------------------------------------------------------------
-export async function generateStory({ character, sectionTitle, sectionTopic, sessionAccuracy = 0 }) {
+export async function generateStory({ character, sectionTitle, sectionTopic }) {
   const charStr = (typeof character === "string" ? character : character?.name || character?.id || "Superman").toLowerCase();
   const isBatman = charStr.includes("batman");
   const isSupergirl = charStr.includes("supergirl");
@@ -608,12 +608,6 @@ export async function generateFeedback({ character, totalCorrect, totalQuestions
   });
 }
 
-export async function generateEvaluation({ character, chapterTitle, topic }) {
-  return Promise.resolve({
-    message: `Evaluation completed for ${chapterTitle}.`,
-    score: 85,
-  });
-}
 
 export async function updateProgress({ studentId = "default", sectionId, correct, responseTime = 0, xpEarned = 0 }) {
   return post("/progress/update", {

@@ -51,14 +51,7 @@ public class TeacherService {
             double roundedPKnow = Math.round(pKnow * 100.0) / 100.0;
             double acc = sp.getOverallAccuracy() != null ? sp.getOverallAccuracy() : 0.0;
 
-            String status;
-            if (roundedPKnow >= 0.85) {
-                status = "Mastered";
-            } else if (roundedPKnow >= 0.60) {
-                status = "On Track";
-            } else {
-                status = "Needs Attention";
-            }
+            String status = studentStatus(roundedPKnow);
 
             roster.add(new TeacherAnalyticsResponse.StudentRosterItem(
                     sp.getId(),
@@ -108,10 +101,10 @@ public class TeacherService {
                     return a > 0 ? (c * 100.0 / a) : 0.0;
                 }).average().orElse(0.0) * 10.0) / 10.0;
 
-                int mastered = (int) tpList.stream().filter(tp -> (tp.getPKnow() != null ? tp.getPKnow() : 0.20) >= 0.85).count();
-                int struggling = (int) tpList.stream().filter(tp -> (tp.getPKnow() != null ? tp.getPKnow() : 0.20) < 0.60).count();
+                int mastered = (int) tpList.stream().filter(tp -> (tp.getPKnow() != null ? tp.getPKnow() : 0.20) >= MASTERED_P_KNOW).count();
+                int struggling = (int) tpList.stream().filter(tp -> (tp.getPKnow() != null ? tp.getPKnow() : 0.20) < ON_TRACK_P_KNOW).count();
 
-                boolean alert = struggling > 0 && (avgPKnow < 0.65 || struggling >= mastered);
+                boolean alert = isBottleneck(avgPKnow, struggling, mastered);
                 String rec = alert
                         ? "⚠️ " + struggling + " student(s) below mastery threshold on " + topic + ". Targeted review suggested."
                         : "✅ Class is proficient with average Bayesian mastery at " + Math.round(avgPKnow * 100) + "%.";
@@ -137,6 +130,25 @@ public class TeacherService {
                 bottlenecks,
                 roster
         );
+    }
+
+    static final double MASTERED_P_KNOW = 0.85;
+    static final double ON_TRACK_P_KNOW = 0.60;
+    /** Class average below this flags a topic even if few students struggle. */
+    static final double BOTTLENECK_AVG_P_KNOW = 0.65;
+
+    static String studentStatus(double pKnow) {
+        if (pKnow >= MASTERED_P_KNOW) return "Mastered";
+        if (pKnow >= ON_TRACK_P_KNOW) return "On Track";
+        return "Needs Attention";
+    }
+
+    /**
+     * A topic is a class bottleneck when at least one student struggles (P(L) &lt; 0.60) and
+     * either the class average is low or strugglers are at least as many as masters.
+     */
+    static boolean isBottleneck(double avgPKnow, int struggling, int mastered) {
+        return struggling > 0 && (avgPKnow < BOTTLENECK_AVG_P_KNOW || struggling >= mastered);
     }
 
     public DashboardResponse getStudentDashboardForTeacher(Long studentProfileId) {

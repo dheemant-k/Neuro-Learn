@@ -42,7 +42,7 @@ class SoundEffects {
       gain.connect(this.ctx.destination);
       osc.start();
       osc.stop(this.ctx.currentTime + 0.04);
-    } catch {}
+    } catch { /* audio unavailable (autoplay policy / no AudioContext): stay silent */ }
   }
 
   playCorrect() {
@@ -65,7 +65,7 @@ class SoundEffects {
         osc.start(now + idx * 0.06);
         osc.stop(now + idx * 0.06 + 0.25);
       });
-    } catch {}
+    } catch { /* audio unavailable (autoplay policy / no AudioContext): stay silent */ }
   }
 
   playStreak() {
@@ -88,7 +88,7 @@ class SoundEffects {
         osc.start(now + idx * 0.05);
         osc.stop(now + idx * 0.05 + 0.3);
       });
-    } catch {}
+    } catch { /* audio unavailable (autoplay policy / no AudioContext): stay silent */ }
   }
 
   playWrong() {
@@ -108,7 +108,7 @@ class SoundEffects {
       gain.connect(this.ctx.destination);
       osc.start(now);
       osc.stop(now + 0.2);
-    } catch {}
+    } catch { /* audio unavailable (autoplay policy / no AudioContext): stay silent */ }
   }
 
   playLaser() {
@@ -128,7 +128,7 @@ class SoundEffects {
       gain.connect(this.ctx.destination);
       osc.start(now);
       osc.stop(now + 0.22);
-    } catch {}
+    } catch { /* audio unavailable (autoplay policy / no AudioContext): stay silent */ }
   }
 }
 
