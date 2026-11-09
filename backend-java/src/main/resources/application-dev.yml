@@ -1,0 +1,16 @@
+# Local development defaults — matches docker-compose.yml.
+# NOT for deployment: the JWT secret below is public in the repo.
+# Environment variables still override every value here.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:neurolearn}
+    username: ${DB_USER:neurolearn}
+    password: ${DB_PASSWORD:neurolearn}
+
+jwt:
+  secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-0123456789abcdef}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}

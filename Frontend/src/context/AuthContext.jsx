@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { getMe, loginUser, registerUser } from "../utils/api";
+import { getMe, loginUser, registerUser, UNAUTHORIZED_EVENT } from "../utils/api";
 
 const AuthContext = createContext(null);
 
@@ -27,6 +27,16 @@ export function AuthProvider({ children }) {
       setLoading(false);
     }
   }, [token]);
+
+  // api.js clears storage and fires this on any 401; mirror it in React state.
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+    };
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+  }, []);
 
   const handleLogin = async (email, password) => {
     const response = await loginUser({ email, password });

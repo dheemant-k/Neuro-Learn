@@ -106,14 +106,18 @@ export default function TestPage({ section, character, onFinish, onBack }) {
       setLoading(true);
       try {
         const sessionRes = await startLearningSession({ topic: section.id }).catch(() => null);
-        const sId = sessionRes ? sessionRes.id : 1;
+        // No session (backend down / not a student): never borrow another session id,
+        // fall through to the offline sample question below instead.
+        const sId = sessionRes ? sessionRes.id : null;
         if (mounted) setSessionId(sId);
 
-        const adaptiveRes = await fetchNextAdaptiveQuestion({
-          sessionId: sId,
-          topic: section.id,
-          character: character?.id || "superman",
-        });
+        const adaptiveRes = sId
+          ? await fetchNextAdaptiveQuestion({
+              sessionId: sId,
+              topic: section.id,
+              character: character?.id || "superman",
+            })
+          : null;
         if (mounted && adaptiveRes?.question) {
           setAdaptiveInfo(adaptiveRes);
           displayQuestion(adaptiveRes.question, adaptiveRes);
@@ -257,11 +261,13 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     setQIndex(nextIdx);
 
     try {
-      const adaptiveRes = await fetchNextAdaptiveQuestion({
-        sessionId: sessionId || 1,
-        topic: section.id,
-        character: character?.id || "superman",
-      });
+      const adaptiveRes = sessionId
+        ? await fetchNextAdaptiveQuestion({
+            sessionId,
+            topic: section.id,
+            character: character?.id || "superman",
+          })
+        : null;
       if (adaptiveRes?.question) {
         setAdaptiveInfo(adaptiveRes);
         displayQuestion(adaptiveRes.question, adaptiveRes);

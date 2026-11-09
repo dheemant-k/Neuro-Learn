@@ -64,12 +64,15 @@ Effort in focused hours; adjust to the submission date.
 - [x] Fix doc drift #14–16 (README §26 now matches `BktParameters.java` and explains the 0.40 unlock vs 0.85 mastery; README §18 checklist ticked).
 
 ### Phase 1 — Security & correctness (≈6 h) — **must ship before any demo**
-- [ ] `SecurityConfig`: `/api/auth/**`, `/api/health` public; everything else `.authenticated()`. Enable `@EnableMethodSecurity`.
-- [ ] `@PreAuthorize("hasRole('TEACHER')")` on `TeacherController`, `hasRole('PARENT')` on `ParentController`, `hasRole('STUDENT')` on sessions/progress. Confirm `UserPrincipal` authorities are `ROLE_*`.
-- [ ] Fix `DashboardController.getDashboardByStudent` (use the id + check access) or delete it if unused by the UI.
-- [ ] Move `jwt.secret`, DB creds to env vars with dev-only defaults in a `application-dev.yml`; restrict CORS to `http://localhost:5173` (+ deployed origin).
-- [ ] Global `@RestControllerAdvice` returning consistent JSON errors (400/401/403/404) instead of stack traces.
-- [ ] Frontend: on 401, clear token and route to Auth page.
+- [x] `SecurityConfig`: login/register/health public; everything else needs a token; unknown paths `denyAll()`. JSON 401/403 bodies.
+- [x] Role rules — done as URL rules in `SecurityConfig` (one readable table) instead of `@PreAuthorize`: `/api/teacher/**` TEACHER, `/api/parent/**` PARENT, `/api/sessions/**` `/api/progress/**` `/api/dashboard` STUDENT, `/api/questions/**` + `/api/auth/me` any logged-in user.
+- [x] Deleted `DashboardController.getDashboardByStudent` (ignored its id, unused by the UI). `DashboardService` no longer falls back to the first student in the DB.
+- [x] Session ownership: next-question / attempt / complete return 403 for another student's session, 404 for a missing one. Removed the anonymous `testhero@` fallback.
+- [x] `jwt.secret`, DB creds, CORS origins come from env vars; dev defaults live in `application-dev.yml` (default profile). JWT secret < 32 bytes fails fast.
+- [x] Global `@RestControllerAdvice` → `ApiError` JSON for 400/403/404/500.
+- [x] Frontend: 401 clears the token and shows the login page; picking a chapter or the dashboard while logged out goes to login; non-students are told quests are student-only; `TestPage` no longer borrows session id 1.
+- Verified live: 39 role/ownership checks (anon, student, second student, teacher, parent) all as expected; `mvnw test` 6/6; student demo login → roadmap → adaptive quiz works.
+- Known gaps, left for later phases: teachers still see every student (Phase 3 classes); the client still decides `correct` and receives `correctAnswer` with each question, so answers can be faked (fold into Phase 2/4 — check answers server-side).
 
 ### Phase 2 — Test & CI foundation (≈8 h)
 - [ ] Add Testcontainers (Postgres 16) so `contextLoads` and integration tests run without a manual DB.

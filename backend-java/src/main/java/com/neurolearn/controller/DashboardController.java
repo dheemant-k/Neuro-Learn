@@ -7,6 +7,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * STUDENT only: the caller's own dashboard. Teachers use /api/teacher/student/{id};
+ * parents use /api/parent/child/{id}.
+ */
 @RestController
 @RequestMapping("/api/dashboard")
 public class DashboardController {
@@ -18,19 +22,7 @@ public class DashboardController {
     }
 
     @GetMapping
-    public ResponseEntity<DashboardResponse> getDashboard(
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        String email = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(dashboardService.getDashboardData(email));
-    }
-
-    @GetMapping("/{studentId}")
-    public ResponseEntity<DashboardResponse> getDashboardByStudent(
-            @PathVariable String studentId,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        String email = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(dashboardService.getDashboardData(email));
+    public ResponseEntity<DashboardResponse> getDashboard(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(dashboardService.getDashboardData(userDetails.getUsername()));
     }
 }

@@ -8,6 +8,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * TEACHER only (see SecurityConfig). Until classes exist (FUTURE_WORKFLOW Phase 3)
+ * a teacher can see every student.
+ */
 @RestController
 @RequestMapping("/api/teacher")
 public class TeacherController {
@@ -19,18 +23,12 @@ public class TeacherController {
     }
 
     @GetMapping("/analytics")
-    public ResponseEntity<TeacherAnalyticsResponse> getAnalytics(
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        String email = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(teacherService.getTeacherAnalytics(email));
+    public ResponseEntity<TeacherAnalyticsResponse> getAnalytics(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(teacherService.getTeacherAnalytics(userDetails.getUsername()));
     }
 
     @GetMapping("/student/{studentProfileId}")
-    public ResponseEntity<DashboardResponse> getStudentDashboard(
-            @PathVariable Long studentProfileId,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
+    public ResponseEntity<DashboardResponse> getStudentDashboard(@PathVariable Long studentProfileId) {
         return ResponseEntity.ok(teacherService.getStudentDashboardForTeacher(studentProfileId));
     }
 }
