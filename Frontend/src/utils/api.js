@@ -99,13 +99,19 @@ export async function fetchNextAdaptiveQuestion({ sessionId, topic, character, c
   return get(`/sessions/${sessionId}/next-question${query}`);
 }
 
-export async function recordQuestionAttempt({ sessionId, questionId, correct, responseTimeMs, attemptNumber = 1 }) {
+// The server grades the answer and returns { correct, correctAnswer, explanation, ... }.
+export async function recordQuestionAttempt({ sessionId, questionId, selectedOption, responseTimeMs, attemptNumber = 1 }) {
   return post(`/sessions/${sessionId}/attempt`, {
     questionId,
-    correct,
+    selectedOption,
     responseTimeMs,
     attemptNumber,
   });
+}
+
+// type: "FIFTY_FIFTY" → { eliminatedOptions: ["B","D"], hintsUsed } ; "CLUE" → logged only
+export async function requestSessionHint({ sessionId, questionId, type }) {
+  return post(`/sessions/${sessionId}/hints`, { questionId, type });
 }
 
 export async function completeLearningSession({ sessionId }) {

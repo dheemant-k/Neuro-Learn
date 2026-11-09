@@ -46,7 +46,7 @@ public class QuestionService {
                 questions = questionRepository.findAll();
             }
         }
-        return questions.stream().map(QuestionResponse::fromEntity).collect(Collectors.toList());
+        return questions.stream().map(QuestionResponse::forStudent).collect(Collectors.toList());
     }
 
     public QuestionResponse getRandomQuestion(String topic, Integer difficulty) {
@@ -78,12 +78,12 @@ public class QuestionService {
             }
         }
 
-        return questionOpt.map(QuestionResponse::fromEntity)
+        return questionOpt.map(QuestionResponse::forStudent)
                 .orElseGet(() -> {
                     // Fallback to any question under the topic
                     if (topic != null && !topic.isBlank()) {
                         return questionRepository.findRandomQuestionByTopic(topic)
-                                .map(QuestionResponse::fromEntity)
+                                .map(QuestionResponse::forStudent)
                                 .orElse(null);
                     }
                     return null;

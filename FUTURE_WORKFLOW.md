@@ -72,7 +72,7 @@ Effort in focused hours; adjust to the submission date.
 - [x] Global `@RestControllerAdvice` → `ApiError` JSON for 400/403/404/500.
 - [x] Frontend: 401 clears the token and shows the login page; picking a chapter or the dashboard while logged out goes to login; non-students are told quests are student-only; `TestPage` no longer borrows session id 1.
 - Verified live: 39 role/ownership checks (anon, student, second student, teacher, parent) all as expected; `mvnw test` 6/6; student demo login → roadmap → adaptive quiz works.
-- Known gaps, left for later phases: ~~teachers still see every student~~ (fixed in Phase 3); the client still decides `correct` and receives `correctAnswer` with each question, so answers can be faked (fold into Phase 2/4 — check answers server-side).
+- Known gaps, left for later phases: ~~teachers still see every student~~ (fixed in Phase 3); ~~the client decides `correct`, so answers can be faked~~ (fixed in Phase 4a: server-side grading).
 
 ### Phase 2 — Test & CI foundation (≈8 h)
 - [x] Testcontainers (Postgres 16, pinned to Testcontainers 1.21.4 for Docker Engine 29). `mvnw verify` needs only Docker — no manual DB.
@@ -93,10 +93,19 @@ Effort in focused hours; adjust to the submission date.
 - [x] `ClassIntegrationTest` (6 cases). Total: 58 backend tests. Checked in the browser: create class → student joins with lowercase code → teacher sees and removes them.
 - Not done (small follow-ups if needed): rename/delete a class, student "leave class", regenerate a leaked join code.
 
-### Phase 4 — LLM question generation (README guaranteed deliverable) (≈8 h)
-> AI scope, research and proposed re-ordering for Phases 4–9: [docs/AI_FUTURE_SCOPE.md](docs/AI_FUTURE_SCOPE.md). Short version: add a data foundation + server-side grading before generation, and generate hints offline.
-Design per README §8: **offline, teacher-reviewed, never in the student loop.**
-- [ ] `V9__question_review_status.sql`: `questions.status` (`APPROVED` default for existing / `PENDING` / `REJECTED`), `questions.source` (`SEED` / `LLM`), `created_by`.
+### Phase 4a — Data foundation + server-side grading ✅
+> AI scope, research and proposed re-ordering for Phases 4–9: [docs/AI_FUTURE_SCOPE.md](docs/AI_FUTURE_SCOPE.md) (Tier 0).
+- [x] `V9__attempt_logging_and_hints.sql`: `question_attempts.selected_option`, `hints_used`, `adaptive_action`, `adaptive_reason`, `difficulty_served`; `learning_sessions.last_question_id/last_adaptive_*`; `session_hint_events`.
+- [x] **Server-side grading:** attempts send `selectedOption`; the server decides `correct` and only then returns `correctAnswer` + `explanation`. Questions from `/next-question` and `/api/questions` no longer include the answer or explanation. A client-sent `correct` is ignored.
+- [x] Each attempt records the adaptive decision (action + reason) that served it and the difficulty served — explainable history for reports and Phase 5 evaluation.
+- [x] `POST /api/sessions/{id}/hints` (`FIFTY_FIFTY` / `CLUE`): the server picks the two wrong options to remove, logs the hint, counts it on the attempt. Repeats return the same result; not allowed after answering.
+- [x] BKT: a correct answer after 50:50 uses P(G)=0.5 instead of 0.25, so it raises mastery less.
+- [x] Frontend: TestPage/BossFightPage wait for the server's verdict, then reveal the answer; X-Ray and Krypton Clue go through the hint endpoint. The offline sample question (no session) is still graded locally.
+- [x] Tests: `GradingAndLoggingIntegrationTest` (6) + 2 BKT unit tests → 66 backend tests. Browser: X-Ray → answer → DB row has option, hint count, decision; boss attack graded by server.
+
+### Phase 4b — LLM question generation (README guaranteed deliverable) (≈8 h)
+Design per README §8: **offline, teacher-reviewed, never in the student loop.** Needs the LLM provider decision (docs/AI_FUTURE_SCOPE.md §8).
+- [ ] `V10__question_review_status.sql`: `questions.status` (`APPROVED` default for existing / `PENDING` / `REJECTED`), `questions.source` (`SEED` / `LLM`), `created_by`.
 - [ ] `ai/QuestionGenerationService` (Spring `RestClient` → Gemini; key from `GEMINI_API_KEY`): prompt with topic, difficulty, character theme, N; strict JSON schema; validate 4 options, 1 correct, dedupe vs existing text; retries.
 - [ ] `POST /api/teacher/questions/generate` → saves as `PENDING`; `GET /api/teacher/questions?status=PENDING`; `POST …/{id}/approve|reject`; edit before approve.
 - [ ] Question selection queries filter `status = 'APPROVED'`.
@@ -167,6 +176,6 @@ Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 4 ─► Phase 5 ─► Phase
 
 ## 5. Working conventions going forward
 - **Branch per phase** (`feat/security-hardening`, `feat/llm-questions`, …) → PR → CI green → merge. Stop committing straight to `main`.
-- **Flyway:** never edit an applied migration; next free number is **V9**. Seed data stays in its own migrations.
+- **Flyway:** never edit an applied migration; next free number is **V10**. Seed data stays in its own migrations.
 - **Definition of done per item:** backend tests pass, `npm run lint && npm run build` pass, README/API docs updated, demo account path still works.
 - **One plan file:** update this file's checkboxes as work lands instead of adding new top-level `.md` plans.

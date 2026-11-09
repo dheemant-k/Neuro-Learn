@@ -3,6 +3,7 @@ import {
   startLearningSession,
   fetchNextAdaptiveQuestion,
   recordQuestionAttempt,
+  requestSessionHint,
   completeLearningSession,
 } from "../utils/api";
 import { sound } from "../utils/soundEffects";
@@ -133,6 +134,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
             optionD: "x = 7",
             correctAnswer: "A",
             explanation: "Subtract 4: 3x = 15. Divide by 3: x = 5.",
+            offline: true, // no session: graded in the browser
           };
           displayQuestion(fallback, null);
         }
@@ -151,23 +153,39 @@ export default function TestPage({ section, character, onFinish, onBack }) {
   const [sessionId, setSessionId] = useState(null);
 
   // Tactical Assist 1: X-Ray Vision (50/50)
-  const useXRayVision = () => {
+  // The server picks the two wrong options (the browser doesn't know the answer) and logs the hint.
+  const useXRayVision = async () => {
     if (!xRayAvailable || locked || !currentQ) return;
+    let toEliminate;
+    if (currentQ.offline || !sessionId) {
+      const correct = (currentQ.correctAnswer || "A").trim().toUpperCase();
+      toEliminate = ["A", "B", "C", "D"].filter((k) => k !== correct).slice(0, 2);
+    } else {
+      try {
+        const res = await requestSessionHint({ sessionId, questionId: currentQ.id, type: "FIFTY_FIFTY" });
+        toEliminate = res?.eliminatedOptions || [];
+      } catch (err) {
+        console.warn("X-Ray failed:", err);
+        setHeroQuote("X-Ray Vision couldn't lock on. Try again in a moment.");
+        return;
+      }
+    }
     sound.playLaser();
     setXRayAvailable(false);
-
-    const correctKey = (currentQ.correctAnswer || "A").trim().toUpperCase();
-    const wrongKeys = shuffledOptions
-      .map((opt) => opt.key)
-      .filter((k) => k !== correctKey);
-
-    // Randomly pick 2 wrong keys to eliminate
-    const shuffledWrong = [...wrongKeys].sort(() => 0.5 - Math.random());
-    const toEliminate = shuffledWrong.slice(0, 2);
     setEliminatedOptions(toEliminate);
+    // An eliminated option can't stay selected.
+    setSelected((idx) => (idx !== null && toEliminate.includes(shuffledOptions[idx]?.key) ? null : idx));
 
     addFloatingEffect("👁️ X-RAY VISION ACTIVATED!", "laser");
     setHeroQuote("X-Ray Vision scanned the frequency! Two incorrect options eliminated.");
+  };
+
+  const toggleKryptonClue = () => {
+    const opening = !showKryptonClue;
+    setShowKryptonClue(opening);
+    if (opening && sessionId && currentQ?.id && !currentQ.offline && !locked) {
+      requestSessionHint({ sessionId, questionId: currentQ.id, type: "CLUE" }).catch(() => {});
+    }
   };
 
   // Submit Answer
@@ -179,10 +197,36 @@ export default function TestPage({ section, character, onFinish, onBack }) {
 
     const responseTimeMs = Date.now() - startRef.current;
     const chosenKey = chosenOption?.key;
-    const correctKey = (currentQ.correctAnswer || "A").trim().toUpperCase();
-    const isCorrect = chosenKey === correctKey;
 
     setLocked(true);
+
+    // Graded on the server; the browser only learns the answer after submitting.
+    let isCorrect;
+    let attemptRes = null;
+    if (currentQ.offline || !sessionId || !currentQ.id) {
+      isCorrect = chosenKey === (currentQ.correctAnswer || "A").trim().toUpperCase();
+    } else {
+      try {
+        attemptRes = await recordQuestionAttempt({
+          sessionId,
+          questionId: currentQ.id,
+          selectedOption: chosenKey,
+          responseTimeMs,
+          attemptNumber: 1,
+        });
+      } catch (err) {
+        console.warn("Failed recording attempt:", err);
+        setLocked(false);
+        setHeroQuote("Signal lost before your answer reached the Fortress. Lock it in again!");
+        return;
+      }
+      isCorrect = Boolean(attemptRes?.correct);
+      setCurrentQ((q) => ({ ...q, correctAnswer: attemptRes?.correctAnswer, explanation: attemptRes?.explanation }));
+      setBktUpdate(attemptRes);
+      if (attemptRes?.pknow !== undefined) setCurrentPKnow(attemptRes.pknow);
+      else if (attemptRes?.pKnow !== undefined) setCurrentPKnow(attemptRes.pKnow);
+    }
+
     setShowExplain(true);
 
     if (isCorrect) {
@@ -219,26 +263,6 @@ export default function TestPage({ section, character, onFinish, onBack }) {
 
       setHeroQuote("LexCorp frequency deflected the beam. Review the steps and re-calibrate!");
       setLexQuote("Haha! The firewall absorbed your calculation. Try harder, Man of Steel.");
-    }
-
-    // Persist attempt to Bayesian Knowledge Tracing engine
-    if (sessionId && currentQ.id) {
-      try {
-        const attemptRes = await recordQuestionAttempt({
-          sessionId,
-          questionId: currentQ.id,
-          correct: isCorrect,
-          responseTimeMs,
-          attemptNumber: 1,
-        });
-        if (attemptRes) {
-          setBktUpdate(attemptRes);
-          if (attemptRes.pknow !== undefined) setCurrentPKnow(attemptRes.pknow);
-          else if (attemptRes.pKnow !== undefined) setCurrentPKnow(attemptRes.pKnow);
-        }
-      } catch (err) {
-        console.warn("Failed recording attempt:", err);
-      }
     }
   };
 
@@ -379,7 +403,8 @@ export default function TestPage({ section, character, onFinish, onBack }) {
     });
   };
 
-  const correctKey = (currentQ?.correctAnswer || "A").trim().toUpperCase();
+  // Unknown until the server reveals it after submission.
+  const correctKey = currentQ?.correctAnswer ? currentQ.correctAnswer.trim().toUpperCase() : null;
 
   return (
     <div className="min-h-screen text-slate-100 relative overflow-x-hidden select-none">
@@ -521,7 +546,7 @@ export default function TestPage({ section, character, onFinish, onBack }) {
             </button>
 
             <button
-              onClick={() => setShowKryptonClue((prev) => !prev)}
+              onClick={toggleKryptonClue}
               className="px-3 py-1.5 rounded-xl border border-indigo-400/40 bg-indigo-500/10 hover:bg-indigo-500/25 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5"
             >
               <span>💎</span>

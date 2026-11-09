@@ -147,8 +147,7 @@ class ClassIntegrationTest extends IntegrationTestBase {
         // One answer on 'intro' only. Demo students have progress on many other topics.
         long sessionId = postJson("/api/sessions/start", student, Map.of("topic", "intro")).get("id").asLong();
         long qid = getJson("/api/sessions/" + sessionId + "/next-question?topic=intro", student).get("question").get("id").asLong();
-        postJson("/api/sessions/" + sessionId + "/attempt", student,
-                Map.of("questionId", qid, "correct", false, "responseTimeMs", 3000, "attemptNumber", 1));
+        answer(student, sessionId, qid, false);
 
         Set<String> topics = new HashSet<>();
         for (JsonNode b : getJson("/api/teacher/analytics", teacher).get("topicBottlenecks")) {

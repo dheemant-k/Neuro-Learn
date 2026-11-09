@@ -36,12 +36,7 @@ class LearningFlowIntegrationTest extends IntegrationTestBase {
             assertThat(q.get("topic").asText()).isEqualTo("intro");
 
             boolean answerCorrect = i != 1; // correct, wrong, correct
-            JsonNode attempt = postJson("/api/sessions/" + sessionId + "/attempt", token, Map.of(
-                    "questionId", q.get("id").asLong(),
-                    "correct", answerCorrect,
-                    "responseTimeMs", 4000,
-                    "attemptNumber", 1
-            ));
+            JsonNode attempt = answer(token, sessionId, q.get("id").asLong(), answerCorrect);
             assertThat(attempt.get("correct").asBoolean()).isEqualTo(answerCorrect);
             answered++;
             if (answerCorrect) correct++;
@@ -71,7 +66,7 @@ class LearningFlowIntegrationTest extends IntegrationTestBase {
         long sessionId = postJson("/api/sessions/start", owner, Map.of("topic", "intro")).get("id").asLong();
         long questionId = getJson("/api/sessions/" + sessionId + "/next-question?topic=intro", owner)
                 .get("question").get("id").asLong();
-        Map<String, Object> attempt = Map.of("questionId", questionId, "correct", true, "responseTimeMs", 1000, "attemptNumber", 1);
+        Map<String, Object> attempt = Map.of("questionId", questionId, "selectedOption", "A", "responseTimeMs", 1000, "attemptNumber", 1);
 
         mvc.perform(authed(get("/api/sessions/" + sessionId + "/next-question?topic=intro"), other))
                 .andExpect(status().isForbidden())
@@ -84,7 +79,7 @@ class LearningFlowIntegrationTest extends IntegrationTestBase {
 
         assertThat(statusOf(get("/api/sessions/99999999/next-question"), owner)).isEqualTo(404);
         assertThat(statusOf(get("/api/sessions/abc/next-question"), owner)).isEqualTo(400);
-        assertThat(statusOf(jsonPost("/api/sessions/" + sessionId + "/attempt", Map.of("correct", true)), owner)).isEqualTo(400);
+        assertThat(statusOf(jsonPost("/api/sessions/" + sessionId + "/attempt", Map.of("selectedOption", "A")), owner)).isEqualTo(400);
     }
 
     @Test

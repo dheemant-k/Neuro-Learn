@@ -3,6 +3,7 @@ package com.neurolearn.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neurolearn.TestcontainersConfiguration;
+import com.neurolearn.repository.QuestionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -41,6 +42,29 @@ abstract class IntegrationTestBase {
 
     @Autowired
     protected ObjectMapper json;
+
+    @Autowired
+    protected QuestionRepository questionRepository;
+
+    /** The API hides answers before submission, so tests read them from the DB. */
+    protected String correctOptionOf(long questionId) {
+        return questionRepository.findById(questionId).orElseThrow().getCorrectAnswer().trim().toUpperCase();
+    }
+
+    protected String wrongOptionOf(long questionId) {
+        String correct = correctOptionOf(questionId);
+        return correct.equals("A") ? "B" : "A";
+    }
+
+    /** Submits an answer that is right or wrong on purpose. */
+    protected JsonNode answer(String token, long sessionId, long questionId, boolean correct) throws Exception {
+        return postJson("/api/sessions/" + sessionId + "/attempt", token, Map.of(
+                "questionId", questionId,
+                "selectedOption", correct ? correctOptionOf(questionId) : wrongOptionOf(questionId),
+                "responseTimeMs", 4000,
+                "attemptNumber", 1
+        ));
+    }
 
     protected String login(String email) throws Exception {
         return postJson("/api/auth/login", null, Map.of("email", email, "password", DEMO_PASSWORD))

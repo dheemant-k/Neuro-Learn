@@ -79,6 +79,8 @@
 
 ### Tier 0 — Data foundation (do first, ~1–2 days)
 
+> **Status:** done in Phase 4a (V9) — selected option, hints, adaptive decision and difficulty are logged; grading is server-side; 50:50 is server-decided and down-weights BKT evidence. Still open: `question_distractors` misconception tags, skill tags, anonymised export.
+
 | Item | Why |
 |---|---|
 | **V9 migration:** `question_attempts.selected_option`, `hints_used`, `adaptive_action`, `adaptive_reason`, `difficulty_served` | Unlocks misconception analysis, distractor hints, policy evaluation, explainable reports. |

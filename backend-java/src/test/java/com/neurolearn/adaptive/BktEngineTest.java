@@ -77,4 +77,22 @@ public class BktEngineTest {
         assertEquals(DifficultyAction.INCREASE, d3.action());
         assertTrue(d3.isMastered());
     }
+
+    @Test
+    void testHigherGuessProbabilityMakesCorrectAnswerWeakerEvidence() {
+        double prior = 0.30;
+        BktUpdateResult normal = engine.updateKnowledge(prior, true);          // P(G)=0.25 (4 options)
+        BktUpdateResult afterFiftyFifty = engine.updateKnowledge(prior, true, 0.5); // 2 options left
+
+        assertTrue(afterFiftyFifty.posteriorPKnow() < normal.posteriorPKnow(),
+                "A correct answer with 2 options left should raise P(L) less");
+        assertTrue(afterFiftyFifty.posteriorPKnow() > prior, "It is still some evidence of knowing");
+    }
+
+    @Test
+    void testDefaultOverloadMatchesExplicitDefaultGuess() {
+        BktUpdateResult a = engine.updateKnowledge(0.42, false);
+        BktUpdateResult b = engine.updateKnowledge(0.42, false, engine.getParameters().pGuess());
+        assertEquals(a.updatedPKnow(), b.updatedPKnow(), 1e-12);
+    }
 }

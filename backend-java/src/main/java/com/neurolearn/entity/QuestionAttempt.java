@@ -35,8 +35,36 @@ public class QuestionAttempt {
     @Column(name = "timestamp", insertable = false, updatable = false)
     private OffsetDateTime timestamp;
 
+    /** A–D; null for attempts recorded before V9. */
+    @Column(name = "selected_option", length = 1)
+    private String selectedOption;
+
+    @Column(name = "hints_used", nullable = false)
+    private Integer hintsUsed = 0;
+
+    /** Decision that served this question (null if not served by the adaptive engine, e.g. boss fights). */
+    @Column(name = "adaptive_action", length = 10)
+    private String adaptiveAction;
+
+    @Column(name = "adaptive_reason", columnDefinition = "TEXT")
+    private String adaptiveReason;
+
+    @Column(name = "difficulty_served")
+    private Integer difficultyServed;
+
     public QuestionAttempt() {
     }
+
+    public String getSelectedOption() { return selectedOption; }
+    public void setSelectedOption(String selectedOption) { this.selectedOption = selectedOption; }
+    public Integer getHintsUsed() { return hintsUsed; }
+    public void setHintsUsed(Integer hintsUsed) { this.hintsUsed = hintsUsed; }
+    public String getAdaptiveAction() { return adaptiveAction; }
+    public void setAdaptiveAction(String adaptiveAction) { this.adaptiveAction = adaptiveAction; }
+    public String getAdaptiveReason() { return adaptiveReason; }
+    public void setAdaptiveReason(String adaptiveReason) { this.adaptiveReason = adaptiveReason; }
+    public Integer getDifficultyServed() { return difficultyServed; }
+    public void setDifficultyServed(Integer difficultyServed) { this.difficultyServed = difficultyServed; }
 
     public QuestionAttempt(Long id, StudentProfile studentProfile, Question question, LearningSession session, Boolean correct, Long responseTimeMs, Integer attemptNumber, OffsetDateTime timestamp) {
         this.id = id;
