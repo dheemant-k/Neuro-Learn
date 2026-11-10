@@ -1,0 +1,6 @@
+topic,sequences,answers,p_init,p_transit,p_guess,p_slip,logloss_fitted,logloss_default,enough_data
+elimination,1,1,0.0010,0.0200,0.0010,0.3000,0.0017,0.4780,false
+final_boss,2,7,0.0010,0.2250,0.0010,0.3000,0.3416,0.5505,false
+graphing,1,5,0.0010,0.0010,0.4000,0.3000,0.6737,0.9198,false
+intro,8,46,0.3725,0.0010,0.4000,0.2800,0.6856,0.8391,false
+quad_intro,1,1,0.9990,0.0200,0.4000,0.0010,0.0016,0.9676,false

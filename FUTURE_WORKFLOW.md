@@ -115,11 +115,14 @@ Design per README §8: **offline, teacher-reviewed, never in the student loop.**
 - ⚠️ Not yet verified against the **real** Gemini API (no key in this environment) — only its request/response shape via mocked HTTP. First real run: set the key, generate 1 question, check the result.
 - Follow-ups: pre-generated hint ladder (AI scope 1b) reusing this pipeline; teacher-written questions (`source=TEACHER`); stronger maths check (SymPy) beyond the self-check.
 
-### Phase 5 — Evaluation: fixed vs adaptive (≈6 h) — gives the report numbers
-- [ ] `SimulationService` (or a JUnit/CLI runner): simulated students with known true-skill curves answer questions under (a) fixed difficulty order and (b) the adaptive engine.
-- [ ] Metrics: questions-to-mastery, final P(L) error vs true skill, % time in "productive struggle" band, difficulty trajectory.
-- [ ] Output a CSV + charts for the report; document method in `docs/evaluation.md`.
-- [ ] Reuse the same simulator later as the synthetic-data generator for DKT (future_scope §6.3).
+### Phase 5 — Evaluation: fixed vs adaptive ✅
+Full write-up: **[docs/evaluation.md](docs/evaluation.md)** (charts + CSVs in `docs/evaluation/`).
+- [x] `evaluation/` package (plain Java CLI, no DB): simulated students (ability vs item difficulty, learning peaks just above the student's level, optional frustration quitting), same students and random draws under every policy.
+- [x] Policies: fixed ramp, **current engine (unchanged)**, tuned engine, difficulty-aware Elo, ramp with remediation, random. Tuning on a training population (seed 1), results on a separate test population (seed 42), 6 sensitivity scenarios.
+- [x] `BktFitter` (MLE) with a parameter-recovery check (±0.02); fit on the app's logged attempts → too little data (60 answers, 8 students).
+- [x] Charts (`make_charts.py`), 17 unit tests incl. a regression guard on the headline results → **116 backend tests**.
+- **Findings:** fixed ramp beats the current engine on mastery within 30 questions (73.4% vs 61.2%) in every scenario; the engine's "Mastered" claim is early and almost never true (0% vs 94% for a difficulty-aware estimate); adaptivity reduces quitting when frustration is modelled.
+- **Follow-ups:** (1) earn "Mastered" with level-3 evidence — small, high-value app change; (2) classroom pilot (fixed vs adaptive A/B) before re-tuning difficulty selection; (3) IRT calibration after ~500 respondents; (4) simulator can feed DKT experiments later.
 
 ### Phase 6 — Deployment (≈5 h)
 - [ ] `backend-java/Dockerfile` (multi-stage maven → JRE 17), `Frontend/Dockerfile` (build → nginx, proxy `/api`).
