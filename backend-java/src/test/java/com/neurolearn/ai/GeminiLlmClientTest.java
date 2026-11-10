@@ -28,7 +28,48 @@ class GeminiLlmClientTest {
     void setUp() {
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        client = new GeminiLlmClient(builder, new ObjectMapper(), BASE, "test-key", "gemini-test");
+        client = new GeminiLlmClient(builder, new ObjectMapper(), BASE, "test-key", "gemini-test", 3, 0);
+    }
+
+    @Test
+    void overloadIsRetriedThenSucceeds() {
+        server.expect(requestTo(BASE + "/models/gemini-test:generateContent")).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        server.expect(requestTo(BASE + "/models/gemini-test:generateContent")).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+        server.expect(requestTo(BASE + "/models/gemini-test:generateContent"))
+                .andRespond(withSuccess("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{}\"}]}}]}", MediaType.APPLICATION_JSON));
+
+        assertThat(client.generateJson("s", "p", Map.of(), 0.0)).isEqualTo("{}");
+        server.verify();
+    }
+
+    @Test
+    void givesUpAfterMaxAttemptsAndDoesNotRetryClientErrors() {
+        for (int i = 0; i < 3; i++) {
+            server.expect(requestTo(BASE + "/models/gemini-test:generateContent")).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        }
+        assertThatThrownBy(() -> client.generateJson("s", "p", Map.of(), 0.0))
+                .isInstanceOf(LlmUnavailableException.class).hasMessageContaining("HTTP 503").hasMessageContaining("overloaded");
+        server.verify();
+
+        server.reset();
+        server.expect(requestTo(BASE + "/models/gemini-test:generateContent")).andRespond(withStatus(HttpStatus.BAD_REQUEST));
+        assertThatThrownBy(() -> client.generateJson("s", "p", Map.of(), 0.0)).hasMessageContaining("HTTP 400");
+        server.verify(); // exactly one call: 400 is not retried
+    }
+
+    @Test
+    void nonAsciiMathSymbolsSurviveWhenContentTypeHasNoCharset() {
+        String body = "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"x = 3 ± √2\"}]}}]}";
+        server.expect(requestTo(BASE + "/models/gemini-test:generateContent"))
+                .andRespond(withSuccess(body.getBytes(java.nio.charset.StandardCharsets.UTF_8), MediaType.APPLICATION_JSON));
+
+        assertThat(client.generateJson("s", "p", Map.of(), 0.0)).isEqualTo("x = 3 ± √2");
+    }
+
+    @Test
+    void thoughtPartsAreSkipped() {
+        assertThat(client.extractText("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"thinking...\",\"thought\":true},{\"text\":\"{}\"}]}}]}"))
+                .isEqualTo("{}");
     }
 
     @Test
@@ -64,10 +105,10 @@ class GeminiLlmClientTest {
     @Test
     void httpErrorBecomesLlmUnavailable() {
         server.expect(requestTo(BASE + "/models/gemini-test:generateContent"))
-                .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
         assertThatThrownBy(() -> client.generateJson("s", "p", Map.of(), 0.0))
                 .isInstanceOf(LlmUnavailableException.class)
-                .hasMessageContaining("HTTP 429");
+                .hasMessageContaining("HTTP 401");
     }
 
     @Test

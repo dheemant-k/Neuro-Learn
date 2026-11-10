@@ -26,6 +26,17 @@ public record QuestionCandidate(
     static final int MAX_EXPLANATION = 2000;
     static final int MAX_MISTAKE = 300;
     static final List<String> KEYS = List.of("A", "B", "C", "D");
+    /** Self-correction words that show up when the model loses track mid-solution. */
+    static final java.util.regex.Pattern SECOND_GUESSING = java.util.regex.Pattern.compile(
+            "(?i)\\b(wait|hmm+|oops|whoops)\\b|\\bah,|\\blet me (re)?(check|calculate|try)|\\bthat'?s (not right|wrong)|\\(not \\d+\\)");
+
+    /** Same candidate with LaTeX converted to the app's plain-text maths style (see {@link MathText}). */
+    public QuestionCandidate plainText() {
+        Map<String, String> m = new LinkedHashMap<>();
+        if (mistakes != null) mistakes.forEach((k, v) -> m.put(k, MathText.toPlain(v)));
+        return new QuestionCandidate(MathText.toPlain(question), MathText.toPlain(a), MathText.toPlain(b),
+                MathText.toPlain(c), MathText.toPlain(d), correct, MathText.toPlain(explanation), m);
+    }
 
     public String option(String key) {
         return switch (key) {
@@ -68,6 +79,10 @@ public record QuestionCandidate(
         }
         if (blank(explanation)) return Optional.of("Explanation is empty");
         if (explanation.length() > MAX_EXPLANATION) return Optional.of("Explanation is too long");
+        if (SECOND_GUESSING.matcher(explanation).find()) {
+            // e.g. "x = 8? Wait: ... Ah, outer is 10" — the model changed its mind, so its answer is unreliable.
+            return Optional.of("Explanation second-guesses itself (answer unreliable)");
+        }
         for (String k : KEYS) {
             if (k.equals(key)) continue;
             String m = mistakes == null ? null : mistakes.get(k);

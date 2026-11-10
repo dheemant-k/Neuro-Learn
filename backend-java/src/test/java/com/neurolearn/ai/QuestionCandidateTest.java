@@ -60,6 +60,16 @@ class QuestionCandidateTest {
     }
 
     @Test
+    void explanationThatSecondGuessesItselfIsRejected() {
+        String confused = "5x = 40, so x = 8? Wait: 3(8) - 2(10) = 4. Ah, outer is 10. 3(10) - 2(8) = 14 (not 4).";
+        QuestionCandidate c = new QuestionCandidate("q", "1", "2", "3", "4", "A", confused, mistakes());
+        assertThat(c.problem()).contains("Explanation second-guesses itself (answer unreliable)");
+
+        String fine = "Subtract 3 from both sides: 2x = 8. Divide by 2: x = 4. Check: 2(4) + 3 = 11.";
+        assertThat(new QuestionCandidate("q", "1", "2", "3", "4", "A", fine, mistakes()).problem()).isEmpty();
+    }
+
+    @Test
     void overlongTextIsRejected() {
         QuestionCandidate longQ = new QuestionCandidate("x".repeat(1001), "1", "2", "3", "4", "A", "e", mistakes());
         assertThat(longQ.problem()).contains("Question text is too long");

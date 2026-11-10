@@ -39,7 +39,7 @@ import java.util.*;
 @Service
 public class QuestionGenerationService {
 
-    static final String PROMPT_VERSION = "qgen-v1";
+    static final String PROMPT_VERSION = "qgen-v2";
     static final Set<String> THEMES = Set.of("batman", "superman", "supergirl");
 
     /** Plain-language description of each section, so the model knows what to test. */
@@ -72,6 +72,8 @@ public class QuestionGenerationService {
             - Wrap the maths in a short story line featuring the given hero (one or two sentences). \
             Never use real people's names other than the hero and their well-known world.
             - The explanation shows the solution in 2-4 short steps.
+            - Write maths as PLAIN TEXT exactly like the examples: x^2, 3x + 2y = 12, √(b^2 - 4ac), ±, Δ, (a)/(b).             Never use LaTeX, never wrap maths in $ signs, no backslash commands.
+            - Money is in Indian rupees (₹), never dollars.
             - Difficulty: 1 = one-step/basic recall, 2 = standard application, 3 = multi-step or word problem.
             """;
 
@@ -301,8 +303,9 @@ public class QuestionGenerationService {
             for (String k : List.of("a", "b", "c", "d")) {
                 mistakes.put(k.toUpperCase(Locale.ROOT), text(n, "mistake_" + k));
             }
+            // Normalise any LaTeX the model used anyway to the app's plain-text maths style.
             out.add(new QuestionCandidate(text(n, "question"), text(n, "a"), text(n, "b"), text(n, "c"), text(n, "d"),
-                    text(n, "correct"), text(n, "explanation"), mistakes));
+                    text(n, "correct"), text(n, "explanation"), mistakes).plainText());
         }
         return out;
     }
