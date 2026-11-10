@@ -43,8 +43,53 @@ public class Question {
     @Column(name = "character_theme", length = 50)
     private String characterTheme = "batman";
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private QuestionStatus status = QuestionStatus.APPROVED;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private QuestionSource source = QuestionSource.SEED;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id")
+    private User createdBy;
+
+    @Column(name = "generator_model", length = 60)
+    private String generatorModel;
+
+    @Column(name = "prompt_version", length = 20)
+    private String promptVersion;
+
+    @Column(name = "created_at", nullable = false)
+    private java.time.OffsetDateTime createdAt;
+
+    @Column(name = "reviewed_at")
+    private java.time.OffsetDateTime reviewedAt;
+
     public Question() {
     }
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = java.time.OffsetDateTime.now();
+        }
+    }
+
+    public QuestionStatus getStatus() { return status; }
+    public void setStatus(QuestionStatus status) { this.status = status; }
+    public QuestionSource getSource() { return source; }
+    public void setSource(QuestionSource source) { this.source = source; }
+    public User getCreatedBy() { return createdBy; }
+    public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
+    public String getGeneratorModel() { return generatorModel; }
+    public void setGeneratorModel(String generatorModel) { this.generatorModel = generatorModel; }
+    public String getPromptVersion() { return promptVersion; }
+    public void setPromptVersion(String promptVersion) { this.promptVersion = promptVersion; }
+    public java.time.OffsetDateTime getCreatedAt() { return createdAt; }
+    public java.time.OffsetDateTime getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(java.time.OffsetDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
 
     public Question(Long id, String topic, Integer difficulty, String questionText, String optionA, String optionB, String optionC, String optionD, String correctAnswer, String explanation, String subject) {
         this(id, topic, difficulty, questionText, optionA, optionB, optionC, optionD, correctAnswer, explanation, subject, "batman");

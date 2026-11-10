@@ -103,14 +103,17 @@ Effort in focused hours; adjust to the submission date.
 - [x] Frontend: TestPage/BossFightPage wait for the server's verdict, then reveal the answer; X-Ray and Krypton Clue go through the hint endpoint. The offline sample question (no session) is still graded locally.
 - [x] Tests: `GradingAndLoggingIntegrationTest` (6) + 2 BKT unit tests → 66 backend tests. Browser: X-Ray → answer → DB row has option, hint count, decision; boss attack graded by server.
 
-### Phase 4b — LLM question generation (README guaranteed deliverable) (≈8 h)
-Design per README §8: **offline, teacher-reviewed, never in the student loop.** Needs the LLM provider decision (docs/AI_FUTURE_SCOPE.md §8).
-- [ ] `V10__question_review_status.sql`: `questions.status` (`APPROVED` default for existing / `PENDING` / `REJECTED`), `questions.source` (`SEED` / `LLM`), `created_by`.
-- [ ] `ai/QuestionGenerationService` (Spring `RestClient` → Gemini; key from `GEMINI_API_KEY`): prompt with topic, difficulty, character theme, N; strict JSON schema; validate 4 options, 1 correct, dedupe vs existing text; retries.
-- [ ] `POST /api/teacher/questions/generate` → saves as `PENDING`; `GET /api/teacher/questions?status=PENDING`; `POST …/{id}/approve|reject`; edit before approve.
-- [ ] Question selection queries filter `status = 'APPROVED'`.
-- [ ] Teacher UI tab "Question Bank": generate form + review queue.
-- [ ] Unit-test the validator with a mocked LLM response (no network in CI).
+### Phase 4b — LLM question generation (README guaranteed deliverable) ✅
+Design per README §8: **offline, teacher-reviewed, never in the student loop.** Provider: **Google Gemini** (decided 2026-11-09).
+- [x] `V10__question_review_and_provenance.sql`: `questions.status` (APPROVED/PENDING/REJECTED; seeds = APPROVED), `source` (SEED/LLM/TEACHER), `created_by_user_id`, `generator_model`, `prompt_version`, `created_at`, `reviewed_at`; `question_misconceptions` (mistake behind each wrong option).
+- [x] `ai/LlmClient` interface → `GeminiLlmClient` (REST `generateContent`, structured JSON output, key in `x-goog-api-key` header, timeouts) and `FakeLlmClient` (offline, deterministic; default so dev/CI need no key). `AI_PROVIDER=gemini` + `GEMINI_API_KEY` to switch; `GEMINI_MODEL` defaults to `gemini-3.8-flash`.
+- [x] `QuestionGenerationService`: prompt with section description + up to 3 existing questions as examples → structural validation in code (4 distinct options, one correct, explanation, a misconception per wrong option, length limits) → duplicate check → **independent self-check solve** (kept only if it agrees) → saved as PENDING. Daily limit 40/teacher (429). Only curriculum content is sent to the model.
+- [x] Teacher API under `/api/teacher/questions`: `POST /generate`, `GET ?status=`, `PUT /{id}` (edit, re-validated), `POST /{id}/approve|reject`. Only the generating teacher reviews; only PENDING can be reviewed.
+- [x] Every student-serving query returns APPROVED only; attempts/hints on non-approved questions are 404.
+- [x] Teacher dashboard tabs: Class Analytics | Question Bank (generate form, rejected reasons, review cards with mistakes, edit/approve/reject, status filter).
+- [x] Tests: `QuestionCandidateTest` (7), `GeminiLlmClientTest` (5, mocked HTTP), `QuestionGenerationServiceTest` (8, scripted LLM), `QuestionGenerationIntegrationTest` (4) → **90 backend tests**. Browser: generate → approve/edit/reject → student sees only the approved one.
+- ⚠️ Not yet verified against the **real** Gemini API (no key in this environment) — only its request/response shape via mocked HTTP. First real run: set the key, generate 1 question, check the result.
+- Follow-ups: pre-generated hint ladder (AI scope 1b) reusing this pipeline; teacher-written questions (`source=TEACHER`); stronger maths check (SymPy) beyond the self-check.
 
 ### Phase 5 — Evaluation: fixed vs adaptive (≈6 h) — gives the report numbers
 - [ ] `SimulationService` (or a JUnit/CLI runner): simulated students with known true-skill curves answer questions under (a) fixed difficulty order and (b) the adaptive engine.
@@ -176,6 +179,6 @@ Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 4 ─► Phase 5 ─► Phase
 
 ## 5. Working conventions going forward
 - **Branch per phase** (`feat/security-hardening`, `feat/llm-questions`, …) → PR → CI green → merge. Stop committing straight to `main`.
-- **Flyway:** never edit an applied migration; next free number is **V10**. Seed data stays in its own migrations.
+- **Flyway:** never edit an applied migration; next free number is **V11**. Seed data stays in its own migrations.
 - **Definition of done per item:** backend tests pass, `npm run lint && npm run build` pass, README/API docs updated, demo account path still works.
 - **One plan file:** update this file's checkboxes as work lands instead of adding new top-level `.md` plans.

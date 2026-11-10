@@ -94,6 +94,8 @@
 All generation happens **server-side, offline or on teacher request**, never in the student's answer loop (consistent with README §8 and §19).
 
 **1a. Teacher-reviewed question generation (README's AI deliverable — Phase 4)**
+
+> **Status:** built in Phase 4b with Google Gemini (structural validation, duplicate check, independent self-check solve, teacher review). Not yet: a symbolic (SymPy) maths check — the self-check + teacher review cover correctness for now.
 - Teacher picks chapter/section, difficulty, theme, count → backend calls the LLM with few-shot examples from the existing bank and a strict JSON schema.
 - Validate before showing: 4 unique options, exactly one correct; **re-solve the maths in code** (e.g. SymPy in a small Python helper, or a Java expression evaluator for linear/quadratic items) and reject mismatches; run self-consistency (ask twice, keep agreeing items); dedupe against the bank.
 - Each distractor carries a misconception tag + one-line explanation.

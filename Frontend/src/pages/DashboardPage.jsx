@@ -13,6 +13,7 @@ import {
   fetchChildReportCard,
 } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
+import QuestionBankPanel from "../components/QuestionBankPanel";
 import { chapters } from "../data/chapters";
 
 export default function DashboardPage({ onBack }) {
@@ -34,7 +35,7 @@ export default function DashboardPage({ onBack }) {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-10">
-        {role === "TEACHER" && <TeacherDashboard />}
+        {role === "TEACHER" && <TeacherView />}
         {role === "PARENT" && <ParentDashboard />}
         {role === "STUDENT" && (
           <>
@@ -137,6 +138,29 @@ function StudentDashboard() {
 // ─────────────────────────────────────────
 // TEACHER VIEW
 // ─────────────────────────────────────────
+function TeacherView() {
+  const [tab, setTab] = useState("analytics");
+  const tabClass = (active) =>
+    `px-4 py-2 rounded-xl border text-sm font-semibold transition ${
+      active
+        ? "border-sky-400/80 bg-sky-500/20 text-sky-200"
+        : "border-[rgba(48,68,105,0.8)] bg-[rgba(13,26,58,0.55)] text-slate-300 hover:bg-[rgba(13,26,58,0.85)]"
+    }`;
+  return (
+    <>
+      <div className="mb-8 flex gap-2" role="tablist">
+        <button role="tab" aria-selected={tab === "analytics"} onClick={() => setTab("analytics")} className={tabClass(tab === "analytics")}>
+          📊 Class Analytics
+        </button>
+        <button role="tab" aria-selected={tab === "questions"} onClick={() => setTab("questions")} className={tabClass(tab === "questions")}>
+          🧠 Question Bank
+        </button>
+      </div>
+      {tab === "analytics" ? <TeacherDashboard /> : <QuestionBankPanel />}
+    </>
+  );
+}
+
 function TeacherDashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);

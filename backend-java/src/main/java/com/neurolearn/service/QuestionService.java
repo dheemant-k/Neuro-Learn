@@ -30,7 +30,7 @@ public class QuestionService {
             } else if (topic != null && !topic.isBlank()) {
                 questions = questionRepository.findByTopicAndCharacterTheme(topic, characterTheme);
             } else {
-                questions = questionRepository.findAll().stream()
+                questions = questionRepository.findAllApproved().stream()
                         .filter(q -> characterTheme.equalsIgnoreCase(q.getCharacterTheme()))
                         .collect(Collectors.toList());
             }
@@ -43,7 +43,7 @@ public class QuestionService {
             } else if (topic != null && !topic.isBlank()) {
                 questions = questionRepository.findByTopic(topic);
             } else {
-                questions = questionRepository.findAll();
+                questions = questionRepository.findAllApproved();
             }
         }
         return questions.stream().map(QuestionResponse::forStudent).collect(Collectors.toList());
@@ -61,7 +61,7 @@ public class QuestionService {
             } else if (topic != null && !topic.isBlank()) {
                 questionOpt = questionRepository.findRandomQuestionByTopicAndCharacterTheme(topic, characterTheme);
             } else {
-                questionOpt = questionRepository.findAll().stream()
+                questionOpt = questionRepository.findAllApproved().stream()
                         .filter(q -> characterTheme.equalsIgnoreCase(q.getCharacterTheme()))
                         .findAny();
             }
@@ -74,7 +74,7 @@ public class QuestionService {
             } else if (topic != null && !topic.isBlank()) {
                 questionOpt = questionRepository.findRandomQuestionByTopic(topic);
             } else {
-                questionOpt = questionRepository.findAll().stream().findAny();
+                questionOpt = questionRepository.findAllApproved().stream().findAny();
             }
         }
 

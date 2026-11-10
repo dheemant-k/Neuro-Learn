@@ -7,6 +7,9 @@
 #   JWT_SECRET            at least 32 characters
 #   JWT_EXPIRATION_MS     optional, default 24h
 #   CORS_ALLOWED_ORIGINS  comma-separated, e.g. https://neurolearn.example.com
+#   AI_PROVIDER           fake (default, offline) | gemini
+#   GEMINI_API_KEY        required when AI_PROVIDER=gemini
+#   GEMINI_MODEL          optional, default gemini-3.8-flash
 
 server:
   port: 8080
@@ -41,3 +44,11 @@ jwt:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  ai:
+    provider: ${AI_PROVIDER:fake}
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
+    # Max questions a teacher can generate per rolling 24 h (cost/abuse guard).
+    daily-generation-limit: ${AI_DAILY_GENERATION_LIMIT:40}
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.8-flash}

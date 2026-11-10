@@ -199,6 +199,7 @@ public class LearningSessionService {
             throw new IllegalArgumentException("questionId is required");
         }
         Question question = questionRepository.findById(request.getQuestionId())
+                .filter(q -> q.getStatus() == QuestionStatus.APPROVED)
                 .orElseThrow(() -> new NotFoundException("Question not found: " + request.getQuestionId()));
         String selected = normalizeOption(request.getSelectedOption());
         if (selected == null) {
@@ -292,6 +293,7 @@ public class LearningSessionService {
     public HintResponse useHint(Long sessionId, String userEmail, HintRequest request) {
         LearningSession session = getOwnedSession(sessionId, userEmail);
         Question question = questionRepository.findById(request.questionId())
+                .filter(q -> q.getStatus() == QuestionStatus.APPROVED)
                 .orElseThrow(() -> new NotFoundException("Question not found: " + request.questionId()));
         SessionHintEvent.HintType type;
         try {

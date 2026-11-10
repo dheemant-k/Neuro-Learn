@@ -41,6 +41,10 @@ function del(path) {
   return request(path, { method: "DELETE" });
 }
 
+function put(path, body) {
+  return request(path, { method: "PUT", body: JSON.stringify(body) });
+}
+
 // -------------------------------------------------------------
 // Auth API Calls
 // -------------------------------------------------------------
@@ -159,6 +163,31 @@ export async function createTeacherClass(name) {
 
 export async function removeStudentFromClass(classId, studentProfileId) {
   return del(`/teacher/classes/${classId}/students/${studentProfileId}`);
+}
+
+// -------------------------------------------------------------
+// Teacher Question Bank (LLM-assisted generation + review)
+// -------------------------------------------------------------
+// { topic, difficulty (1-3), characterTheme, count (1-5) } → { created: [...], rejected: [...], model }
+export async function generateQuestions(params) {
+  return post("/teacher/questions/generate", params);
+}
+
+// status: PENDING | APPROVED | REJECTED — the teacher's own generated questions
+export async function fetchTeacherQuestions(status = "PENDING") {
+  return get(`/teacher/questions?status=${encodeURIComponent(status)}`);
+}
+
+export async function updateTeacherQuestion(id, edits) {
+  return put(`/teacher/questions/${id}`, edits);
+}
+
+export async function approveTeacherQuestion(id) {
+  return post(`/teacher/questions/${id}/approve`, {});
+}
+
+export async function rejectTeacherQuestion(id) {
+  return post(`/teacher/questions/${id}/reject`, {});
 }
 
 // -------------------------------------------------------------
