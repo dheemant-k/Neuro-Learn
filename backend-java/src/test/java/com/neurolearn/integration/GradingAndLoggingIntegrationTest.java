@@ -139,13 +139,13 @@ class GradingAndLoggingIntegrationTest extends IntegrationTestBase {
         String plain = registerFresh("STUDENT");
         long s1 = startSession(plain);
         long q1 = nextQuestion(plain, s1).get("question").get("id").asLong();
-        double pPlain = answer(plain, s1, q1, true).get("pknow").asDouble();
+        double pPlain = answer(plain, s1, q1, true).get("pKnow").asDouble();
 
         String assisted = registerFresh("STUDENT");
         long s2 = startSession(assisted);
         long q2 = nextQuestion(assisted, s2).get("question").get("id").asLong();
         postJson("/api/sessions/" + s2 + "/hints", assisted, Map.of("questionId", q2, "type", "FIFTY_FIFTY"));
-        double pAssisted = answer(assisted, s2, q2, true).get("pknow").asDouble();
+        double pAssisted = answer(assisted, s2, q2, true).get("pKnow").asDouble();
 
         assertThat(pAssisted).isLessThan(pPlain).isGreaterThan(0.20);
     }

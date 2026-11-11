@@ -57,6 +57,7 @@ public class QuestionAttemptResponse {
     public Integer getCurrentLevel() { return currentLevel; }
     public void setCurrentLevel(Integer currentLevel) { this.currentLevel = currentLevel; }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("pKnow")
     public Double getPKnow() { return pKnow; }
     public void setPKnow(Double pKnow) { this.pKnow = pKnow; }
 

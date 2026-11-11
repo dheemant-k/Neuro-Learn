@@ -24,10 +24,20 @@ class ProgressRulesTest {
 
     @Test
     void masteryIsStricterThanUnlock() {
-        assertThat(ProgressService.isMastered(0.84)).isFalse();
-        assertThat(ProgressService.isMastered(0.85)).isTrue();
+        assertThat(MasteryRule.isMastered(0.84, 5)).isFalse();
+        assertThat(MasteryRule.isMastered(0.85, 2)).isTrue();
         assertThat(ProgressService.isSectionCompleted(0.50, 1, 0)).isTrue();
-        assertThat(ProgressService.isMastered(0.50)).isFalse();
+        assertThat(MasteryRule.isMastered(0.50, 5)).isFalse();
+    }
+
+    @Test
+    void masteryNeedsHardQuestionEvidenceNotJustHighPKnow() {
+        assertThat(MasteryRule.isMastered(0.99, 0)).isFalse();
+        assertThat(MasteryRule.isMastered(0.99, 1)).isFalse();
+        assertThat(MasteryRule.isMastered(0.99, 2)).isTrue();
+        assertThat(MasteryRule.hardCorrectStillNeeded(0)).isEqualTo(2);
+        assertThat(MasteryRule.hardCorrectStillNeeded(1)).isEqualTo(1);
+        assertThat(MasteryRule.hardCorrectStillNeeded(7)).isZero();
     }
 
     @ParameterizedTest(name = "{0}/{1} sections done → boss unlocked={2}")

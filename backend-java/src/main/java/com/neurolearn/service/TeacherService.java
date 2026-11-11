@@ -23,6 +23,7 @@ public class TeacherService {
     private final QuestionAttemptRepository attemptRepository;
     private final DashboardService dashboardService;
     private final ClassService classService;
+    private final MasteryRule masteryRule;
 
     public TeacherService(
             StudentProfileRepository profileRepository,
@@ -30,7 +31,8 @@ public class TeacherService {
             TopicProgressRepository topicProgressRepository,
             QuestionAttemptRepository attemptRepository,
             DashboardService dashboardService,
-            ClassService classService
+            ClassService classService,
+            MasteryRule masteryRule
     ) {
         this.profileRepository = profileRepository;
         this.userRepository = userRepository;
@@ -38,6 +40,7 @@ public class TeacherService {
         this.attemptRepository = attemptRepository;
         this.dashboardService = dashboardService;
         this.classService = classService;
+        this.masteryRule = masteryRule;
     }
 
     /**
@@ -55,6 +58,9 @@ public class TeacherService {
         List<TopicProgress> allTopicProgress = visibleIds.isEmpty()
                 ? List.of()
                 : topicProgressRepository.findByStudentProfileIdIn(visibleIds);
+        Map<Long, Map<String, Long>> hardCorrect = visibleIds.isEmpty()
+                ? Map.of()
+                : masteryRule.hardCorrectByStudentAndTopic(visibleIds);
 
         List<TeacherAnalyticsResponse.StudentRosterItem> roster = new ArrayList<>();
         for (StudentProfile sp : profiles) {
@@ -66,7 +72,9 @@ public class TeacherService {
             double roundedPKnow = Math.round(pKnow * 100.0) / 100.0;
             double acc = sp.getOverallAccuracy() != null ? sp.getOverallAccuracy() : 0.0;
 
-            String status = studentStatus(roundedPKnow);
+            long studentHardCorrect = hardCorrect.getOrDefault(sp.getId(), Map.of()).values().stream()
+                    .mapToLong(Long::longValue).sum();
+            String status = studentStatus(roundedPKnow, studentHardCorrect);
 
             roster.add(new TeacherAnalyticsResponse.StudentRosterItem(
                     sp.getId(),
@@ -111,7 +119,9 @@ public class TeacherService {
                 return a > 0 ? (c * 100.0 / a) : 0.0;
             }).average().orElse(0.0) * 10.0) / 10.0;
 
-            int mastered = (int) tpList.stream().filter(tp -> (tp.getPKnow() != null ? tp.getPKnow() : 0.20) >= MASTERED_P_KNOW).count();
+            int mastered = (int) tpList.stream().filter(tp -> MasteryRule.isMastered(
+                    tp.getPKnow() != null ? tp.getPKnow() : 0.20,
+                    hardCorrect.getOrDefault(tp.getStudentProfile().getId(), Map.of()).getOrDefault(topic, 0L))).count();
             int struggling = (int) tpList.stream().filter(tp -> (tp.getPKnow() != null ? tp.getPKnow() : 0.20) < ON_TRACK_P_KNOW).count();
 
             boolean alert = isBottleneck(avgPKnow, struggling, mastered);
@@ -141,13 +151,16 @@ public class TeacherService {
         );
     }
 
-    static final double MASTERED_P_KNOW = 0.85;
     static final double ON_TRACK_P_KNOW = 0.60;
     /** Class average below this flags a topic even if few students struggle. */
     static final double BOTTLENECK_AVG_P_KNOW = 0.65;
 
-    static String studentStatus(double pKnow) {
-        if (pKnow >= MASTERED_P_KNOW) return "Mastered";
+    /**
+     * "Mastered" only with hard-question evidence ({@link MasteryRule}); a high P(L) from easy answers
+     * alone shows as "On Track".
+     */
+    static String studentStatus(double pKnow, long hardCorrect) {
+        if (MasteryRule.isMastered(pKnow, hardCorrect)) return "Mastered";
         if (pKnow >= ON_TRACK_P_KNOW) return "On Track";
         return "Needs Attention";
     }
