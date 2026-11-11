@@ -26,6 +26,7 @@ public class LearningSessionService {
     private final UserRepository userRepository;
     private final AdaptiveEngineService adaptiveEngineService;
     private final SessionHintEventRepository hintRepository;
+    private final MasteryRule masteryRule;
 
     /** With two options left after a 50:50, a blind guess is right half the time. */
     static final double FIFTY_FIFTY_GUESS_PROBABILITY = 0.5;
@@ -39,7 +40,8 @@ public class LearningSessionService {
             TopicProgressRepository topicProgressRepository,
             UserRepository userRepository,
             AdaptiveEngineService adaptiveEngineService,
-            SessionHintEventRepository hintRepository
+            SessionHintEventRepository hintRepository,
+            MasteryRule masteryRule
     ) {
         this.sessionRepository = sessionRepository;
         this.attemptRepository = attemptRepository;
@@ -49,6 +51,7 @@ public class LearningSessionService {
         this.userRepository = userRepository;
         this.adaptiveEngineService = adaptiveEngineService;
         this.hintRepository = hintRepository;
+        this.masteryRule = masteryRule;
     }
 
     private StudentProfile getOrCreateProfileForEmail(String userEmail) {
@@ -172,9 +175,19 @@ public class LearningSessionService {
             chosen = !allTopicQuestions.isEmpty() ? allTopicQuestions.get(0) : null;
         }
 
+        // P(L) alone isn't mastery: it must also be earned on hard questions (MasteryRule).
+        long hardCorrect = masteryRule.hardCorrect(profile.getId(), topic);
+        boolean mastered = MasteryRule.isMastered(decision.pKnow(), hardCorrect);
+        String reason = decision.reason();
+        if (decision.isMastered() && !mastered) {
+            long needed = MasteryRule.hardCorrectStillNeeded(hardCorrect);
+            reason = String.format("High knowledge P(L)=%d%% (>=85%%). Level 3 challenge: answer %d more level-3 question%s correctly to earn Mastered.",
+                    Math.round(decision.pKnow() * 100), needed, needed == 1 ? "" : "s");
+        }
+
         if (chosen != null) {
             // Remember why this question was served; copied onto the attempt when it's answered.
-            session.recordServedQuestion(chosen.getId(), decision.action().name(), decision.reason());
+            session.recordServedQuestion(chosen.getId(), decision.action().name(), reason);
             sessionRepository.save(session);
         }
 
@@ -182,11 +195,11 @@ public class LearningSessionService {
                 QuestionResponse.forStudent(chosen),
                 targetDifficulty,
                 decision.action().name(),
-                decision.reason(),
+                reason,
                 count + 1,
                 decision.pKnow(),
                 decision.predictedCorrectProb(),
-                decision.isMastered()
+                mastered
         );
     }
 
@@ -274,7 +287,8 @@ public class LearningSessionService {
                 profile.getTotalXp(),
                 profile.getCurrentLevel(),
                 bktResult.updatedPKnow(),
-                bktResult.isMastered(),
+                // Counts this attempt too (the query flushes it first).
+                MasteryRule.isMastered(bktResult.updatedPKnow(), masteryRule.hardCorrect(profile.getId(), question.getTopic())),
                 bktResult.explanation()
         );
         response.setSelectedOption(selected);

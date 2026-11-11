@@ -141,6 +141,7 @@ public class TeacherAnalyticsResponse {
         public Double getAccuracy() { return accuracy; }
         public void setAccuracy(Double accuracy) { this.accuracy = accuracy; }
 
+        @com.fasterxml.jackson.annotation.JsonProperty("pKnow")
         public Double getPKnow() { return pKnow; }
         public void setPKnow(Double pKnow) { this.pKnow = pKnow; }
 

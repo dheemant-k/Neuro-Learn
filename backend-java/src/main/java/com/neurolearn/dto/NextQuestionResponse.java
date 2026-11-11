@@ -42,6 +42,7 @@ public class NextQuestionResponse {
     public Integer getQuestionIndex() { return questionIndex; }
     public void setQuestionIndex(Integer questionIndex) { this.questionIndex = questionIndex; }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("pKnow")
     public Double getPKnow() { return pKnow; }
     public void setPKnow(Double pKnow) { this.pKnow = pKnow; }
 

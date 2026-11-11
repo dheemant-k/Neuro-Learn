@@ -35,21 +35,23 @@ public class ProgressService {
     private final UserRepository userRepository;
     private final StudentProfileRepository profileRepository;
     private final TopicProgressRepository topicProgressRepository;
+    private final MasteryRule masteryRule;
 
     public ProgressService(
             UserRepository userRepository,
             StudentProfileRepository profileRepository,
-            TopicProgressRepository topicProgressRepository
+            TopicProgressRepository topicProgressRepository,
+            MasteryRule masteryRule
     ) {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
         this.topicProgressRepository = topicProgressRepository;
+        this.masteryRule = masteryRule;
     }
 
     /** Section counts as completed (unlocks the next one) — deliberately lower than mastery. */
     static final double SECTION_UNLOCK_P_KNOW = 0.40;
     static final int SECTION_UNLOCK_CORRECT = 3;
-    static final double MASTERY_P_KNOW = 0.85;
     /** Boss opens after this many completed sections (or all of them, for short chapters). */
     static final int BOSS_UNLOCK_SECTIONS = 3;
 
@@ -57,9 +59,6 @@ public class ProgressService {
         return pKnow >= SECTION_UNLOCK_P_KNOW || (attempts >= 1 && correct >= SECTION_UNLOCK_CORRECT);
     }
 
-    static boolean isMastered(double pKnow) {
-        return pKnow >= MASTERY_P_KNOW;
-    }
 
     static boolean isBossUnlocked(int completedSections, int totalSections) {
         return completedSections >= totalSections || completedSections >= BOSS_UNLOCK_SECTIONS;
@@ -83,6 +82,7 @@ public class ProgressService {
         List<String> sectionOrder = CHAPTER_SECTIONS.getOrDefault(chapterId, DEFAULT_SECTION_ORDER);
 
         Map<String, TopicProgress> progressMap = new HashMap<>();
+        Map<String, Long> hardCorrect = profile != null ? masteryRule.hardCorrectByTopic(profile.getId()) : Map.of();
         if (profile != null) {
             for (TopicProgress tp : topicProgressRepository.findByStudentProfileId(profile.getId())) {
                 progressMap.put(tp.getTopic(), tp);
@@ -104,7 +104,7 @@ public class ProgressService {
             double pKnow = tp != null && tp.getPKnow() != null ? tp.getPKnow() : 0.20;
             sumPKnow += pKnow;
 
-            boolean isMastered = isMastered(pKnow);
+            boolean isMastered = MasteryRule.isMastered(pKnow, hardCorrect.getOrDefault(secId, 0L));
             boolean isCompleted = isSectionCompleted(pKnow, attempts, correct);
             boolean isUnlocked = (i == 0) || previousCompleted;
 

@@ -102,7 +102,9 @@ export default function RoadmapPage({ chapter, character, onLearn, onTest, onFin
             const pKnowPct = Math.round((secProgress?.pKnow || 0.20) * 100);
             const attempts = secProgress?.attempts || 0;
             const correct = secProgress?.correctCount || 0;
-            const isMastered = secProgress?.isMastered || pKnowPct >= 85;
+            // Server decides mastery (high P(L) AND 2 correct level-3 answers); never re-derive it here.
+            const isMastered = Boolean(secProgress?.isMastered);
+            const almostMastered = !isMastered && pKnowPct >= 85;
 
             return (
               <div key={sec.id} className="relative pl-16 pb-10">
@@ -138,6 +140,9 @@ export default function RoadmapPage({ chapter, character, onLearn, onTest, onFin
                           <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                             Mastered 🏆
                           </span>
+                        )}
+                        {almostMastered && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-amber-500/15 text-amber-300 border border-amber-500/40" title="Mastery is earned on hard questions: answer 2 level-3 questions correctly in this mission.">Beat 2 hard Qs to master 🎯</span>
                         )}
                       </div>
                       <div className="pixel-heading text-base mt-1">{sec.title}</div>

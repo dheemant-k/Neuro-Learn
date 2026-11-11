@@ -176,6 +176,9 @@ must **not** be used. The engine keeps its default parameters.
 ## 6. Recommendations
 
 ### 6.1 Change now (low risk)
+- ✅ **Done (2026-11-11):** "Mastered" now needs P(L) ≥ 0.85 **and** 2 correct level-3 answers in the topic
+  (`MasteryRule`), applied to the roadmap, dashboards, teacher roster/bottlenecks, parent report cards and
+  quiz responses. Students see "Beat 2 hard Qs to master" when P(L) is high but the badge isn't earned.
 - **Earn "Mastered" with hard questions.** Simplest version: only show "Mastered" when P(L) ≥ 0.85 **and**
   the student has answered at least 2 level-3 questions correctly in that topic. Better version: a
   difficulty-aware estimate (Elo/IRT, §2). This fixes the most misleading output in the app — it

@@ -87,7 +87,9 @@ function StudentDashboard() {
         <div className="mt-4 space-y-4">
           {data.sections.map((sec) => {
             const bktPct = Math.round((sec.p_know ?? 0.20) * 100);
-            const isMastered = sec.is_mastered || bktPct >= 85;
+            // Server decides mastery (high P(L) AND 2 correct level-3 answers); never re-derive it here.
+            const isMastered = Boolean(sec.is_mastered);
+            const almostMastered = !isMastered && bktPct >= 85;
             return (
               <div key={sec.section_id} className="rounded-2xl border-2 border-[rgba(48,68,105,0.9)] bg-[rgba(15,23,42,0.72)] p-5">
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -95,6 +97,7 @@ function StudentDashboard() {
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-lg">{sectionTitleMap[sec.section_id] || sec.section_id}</span>
                       {isMastered && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Mastered 🏆</span>}
+                      {almostMastered && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-amber-500/15 text-amber-300 border border-amber-500/40" title="Mastery is earned on hard questions: answer 2 level-3 questions correctly in this mission.">Beat 2 hard Qs to master 🎯</span>}
                     </div>
                     <div className="text-sm text-slate-300/80 mt-1">{sec.correct}/{sec.answered} correct • {sec.accuracy}% raw accuracy</div>
                   </div>

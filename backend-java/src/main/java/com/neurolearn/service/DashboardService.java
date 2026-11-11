@@ -16,17 +16,20 @@ public class DashboardService {
     private final StudentProfileRepository profileRepository;
     private final QuestionAttemptRepository attemptRepository;
     private final TopicProgressRepository topicProgressRepository;
+    private final MasteryRule masteryRule;
 
     public DashboardService(
             UserRepository userRepository,
             StudentProfileRepository profileRepository,
             QuestionAttemptRepository attemptRepository,
-            TopicProgressRepository topicProgressRepository
+            TopicProgressRepository topicProgressRepository,
+            MasteryRule masteryRule
     ) {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
         this.attemptRepository = attemptRepository;
         this.topicProgressRepository = topicProgressRepository;
+        this.masteryRule = masteryRule;
     }
 
     /**
@@ -58,6 +61,7 @@ public class DashboardService {
 
         // Section breakdown from TopicProgress
         List<TopicProgress> topicProgressList = topicProgressRepository.findByStudentProfileId(profile.getId());
+        Map<String, Long> hardCorrect = masteryRule.hardCorrectByTopic(profile.getId());
         List<DashboardResponse.SectionStat> sections = new ArrayList<>();
         double totalPKnow = 0.0;
 
@@ -67,7 +71,7 @@ public class DashboardService {
             double acc = ans > 0 ? Math.round(((double) cor / ans) * 1000.0) / 10.0 : 0.0;
             double pKnow = tp.getPKnow() != null ? tp.getPKnow() : 0.20;
             totalPKnow += pKnow;
-            boolean isMastered = pKnow >= 0.85;
+            boolean isMastered = MasteryRule.isMastered(pKnow, hardCorrect.getOrDefault(tp.getTopic(), 0L));
 
             sections.add(new DashboardResponse.SectionStat(tp.getTopic(), ans, cor, acc, 0, Math.round(pKnow * 100.0) / 100.0, isMastered));
         }

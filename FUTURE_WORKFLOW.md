@@ -122,7 +122,9 @@ Full write-up: **[docs/evaluation.md](docs/evaluation.md)** (charts + CSVs in `d
 - [x] `BktFitter` (MLE) with a parameter-recovery check (±0.02); fit on the app's logged attempts → too little data (60 answers, 8 students).
 - [x] Charts (`make_charts.py`), 17 unit tests incl. a regression guard on the headline results → **116 backend tests**.
 - **Findings:** fixed ramp beats the current engine on mastery within 30 questions (73.4% vs 61.2%) in every scenario; the engine's "Mastered" claim is early and almost never true (0% vs 94% for a difficulty-aware estimate); adaptivity reduces quitting when frustration is modelled.
-- **Follow-ups:** (1) earn "Mastered" with level-3 evidence — small, high-value app change; (2) classroom pilot (fixed vs adaptive A/B) before re-tuning difficulty selection; (3) IRT calibration after ~500 respondents; (4) simulator can feed DKT experiments later.
+- [x] **Earned mastery (follow-up 1, done 2026-11-11):** `MasteryRule` — "Mastered" needs P(L) ≥ 0.85 + 2 correct level-3 answers, everywhere it is shown; frontend no longer re-derives it from P(L). Also fixed: P(L) was serialised as `pknow`, so the roadmap, teacher roster and parent cards always showed 20%.
+- **Open quirk:** the roster/parent "P(L)" is the student's *last touched topic*, not an overall value — worth replacing with an average or per-topic view.
+- **Follow-ups:** (2) classroom pilot (fixed vs adaptive A/B) before re-tuning difficulty selection; (3) IRT calibration after ~500 respondents; (4) simulator can feed DKT experiments later.
 
 ### Phase 6 — Deployment (≈5 h)
 - [ ] `backend-java/Dockerfile` (multi-stage maven → JRE 17), `Frontend/Dockerfile` (build → nginx, proxy `/api`).
