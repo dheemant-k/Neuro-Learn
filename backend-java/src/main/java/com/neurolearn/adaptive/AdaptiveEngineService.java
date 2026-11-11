@@ -23,10 +23,18 @@ public class AdaptiveEngineService {
      * Executes the standard Corbett & Anderson (1995) Bayesian Knowledge Tracing update.
      */
     public BktUpdateResult updateKnowledge(double priorPKnow, boolean isCorrect) {
+        return updateKnowledge(priorPKnow, isCorrect, parameters.pGuess());
+    }
+
+    /**
+     * Same update with a different guess probability for this observation — e.g. 0.5 after a
+     * 50:50 assist left two options, so a correct answer counts as weaker evidence of knowledge.
+     */
+    public BktUpdateResult updateKnowledge(double priorPKnow, boolean isCorrect, double guessProbability) {
         // Clamp prior within reasonable bounds
         double pL = Math.max(0.01, Math.min(0.99, priorPKnow));
         double pS = parameters.pSlip();
-        double pG = parameters.pGuess();
+        double pG = Math.max(0.0, Math.min(0.99, guessProbability));
         double pT = parameters.pTransit();
 
         double posterior;

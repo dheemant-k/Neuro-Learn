@@ -1,5 +1,7 @@
 package com.neurolearn.controller;
 
+import com.neurolearn.dto.HintRequest;
+import com.neurolearn.dto.HintResponse;
 import com.neurolearn.dto.NextQuestionResponse;
 import com.neurolearn.dto.QuestionAttemptRequest;
 import com.neurolearn.dto.QuestionAttemptResponse;
@@ -7,6 +9,7 @@ import com.neurolearn.dto.SessionCompleteResponse;
 import com.neurolearn.dto.SessionResponse;
 import com.neurolearn.dto.SessionStartRequest;
 import com.neurolearn.service.LearningSessionService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -51,6 +54,16 @@ public class LearningSessionController {
             @RequestBody QuestionAttemptRequest request
     ) {
         return ResponseEntity.ok(sessionService.recordAttempt(id, userDetails.getUsername(), request));
+    }
+
+    /** Use a hint/assist on the current question (50:50 or clue). Logged and counted on the attempt. */
+    @PostMapping("/{id}/hints")
+    public ResponseEntity<HintResponse> useHint(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody HintRequest request
+    ) {
+        return ResponseEntity.ok(sessionService.useHint(id, userDetails.getUsername(), request));
     }
 
     @PostMapping("/{id}/complete")

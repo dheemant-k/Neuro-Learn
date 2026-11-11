@@ -14,7 +14,7 @@ The primary goal is to build a **reliable, deployable full-stack application** u
 
 ## Quick start
 
-Needs Docker, Java 17+ and Node 20+.
+Needs Docker, Java 17+ (`JAVA_HOME` must point at it — Java 8 can't build this) and Node 20.19+.
 
 ```bash
 docker compose up -d
@@ -31,6 +31,8 @@ cd Frontend && npm install && npm run dev
 - Postgres runs on `localhost:5433`; Flyway creates the schema and seeds questions + demo accounts on first backend start.
 - Backend: `http://localhost:8080/api` (health check: `/api/health`). Frontend: `http://localhost:5173`.
 - Demo logins (password `password123`): `bruce@neurolearn.com` (student), `teacher@neurolearn.com`, `parent@neurolearn.com`.
+- AI question generation (teacher dashboard → Question Bank) runs on an offline fake by default. For real generation with Google Gemini, start the backend with `AI_PROVIDER=gemini` and `GEMINI_API_KEY=<key from Google AI Studio>` (optional `GEMINI_MODEL`, default `gemini-3.8-flash`). Generated questions stay pending until a teacher approves them.
+- Tests: `cd backend-java && ./mvnw verify` (starts its own throwaway Postgres via Testcontainers — Docker must be running). Frontend checks: `npm run lint && npm run build`. CI runs both on every PR.
 - Roadmap and open work: [FUTURE_WORKFLOW.md](FUTURE_WORKFLOW.md). Older planning notes: [docs/history/](docs/history/).
 
 ---
@@ -777,6 +779,11 @@ However, this will only be considered after the core system has been successfull
 
 This separation ensures that the lack of a suitable engagement dataset or model does not affect the delivery of the core project.
 
+> **Decision (November 2026):** NeuroLearn will **not** show a per-child engagement or ADHD-risk flag.
+> Response-time variability is not specific to ADHD at the individual level, and India's DPDP rules
+> prohibit behavioural monitoring of children. Engagement data is used only for a student's own pacing
+> feedback and class-level aggregates. See [docs/AI_FUTURE_SCOPE.md §6](docs/AI_FUTURE_SCOPE.md).
+
 ---
 
 # 18. Scope Definition
@@ -808,9 +815,9 @@ This separation ensures that the lack of a suitable engagement dataset or model 
 
 ### AI
 
-- [ ] LLM-assisted question generation
-- [ ] Stored/cached generated questions
-- [ ] Integration with question bank
+- [x] LLM-assisted question generation *(Google Gemini, teacher-reviewed — Phase 4b)*
+- [x] Stored/cached generated questions *(saved as PENDING, never generated live for students)*
+- [x] Integration with question bank *(approved questions are served like seeded ones)*
 
 ---
 

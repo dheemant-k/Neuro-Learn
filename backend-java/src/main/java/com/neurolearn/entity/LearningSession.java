@@ -26,7 +26,27 @@ public class LearningSession {
 
     private Double accuracy = 0.0;
 
+    /** Most recent question the adaptive engine served, and why — copied onto the matching attempt. */
+    @Column(name = "last_question_id")
+    private Long lastQuestionId;
+
+    @Column(name = "last_adaptive_action", length = 10)
+    private String lastAdaptiveAction;
+
+    @Column(name = "last_adaptive_reason", columnDefinition = "TEXT")
+    private String lastAdaptiveReason;
+
     public LearningSession() {
+    }
+
+    public Long getLastQuestionId() { return lastQuestionId; }
+    public String getLastAdaptiveAction() { return lastAdaptiveAction; }
+    public String getLastAdaptiveReason() { return lastAdaptiveReason; }
+
+    public void recordServedQuestion(Long questionId, String action, String reason) {
+        this.lastQuestionId = questionId;
+        this.lastAdaptiveAction = action;
+        this.lastAdaptiveReason = reason;
     }
 
     public LearningSession(Long id, StudentProfile studentProfile, OffsetDateTime startTime, OffsetDateTime endTime, Integer questionsAttempted, Double accuracy) {

@@ -33,7 +33,7 @@ import java.util.List;
  * Access rules (all paths under /api):
  * <ul>
  *   <li>Public: auth/login, auth/register, health</li>
- *   <li>STUDENT: sessions/**, progress/**, dashboard</li>
+ *   <li>STUDENT: sessions/**, progress/**, dashboard, student/**</li>
  *   <li>TEACHER: teacher/**</li>
  *   <li>PARENT: parent/**</li>
  *   <li>Any logged-in user: auth/me, questions/**</li>
@@ -72,7 +72,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/health", "/api/auth/login", "/api/auth/register", "/error").permitAll()
                 .requestMatchers("/api/teacher/**").hasRole("TEACHER")
                 .requestMatchers("/api/parent/**").hasRole("PARENT")
-                .requestMatchers("/api/sessions/**", "/api/progress/**", "/api/dashboard", "/api/dashboard/**").hasRole("STUDENT")
+                .requestMatchers("/api/sessions/**", "/api/progress/**", "/api/dashboard", "/api/dashboard/**", "/api/student/**").hasRole("STUDENT")
                 .requestMatchers("/api/auth/me", "/api/questions/**").authenticated()
                 .anyRequest().denyAll()
             )

@@ -49,6 +49,33 @@ export default function FeedbackPage({ section, character, results, onContinue }
       ? "OBJECTIVE SECURED"
       : "REGROUP & RETRY";
 
+  const startTypewriter = (text) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTyped("");
+    setDoneTyping(false);
+    let i = 0;
+    timerRef.current = setInterval(() => {
+      i += 2;
+      setTyped(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        setDoneTyping(true);
+        setTimeout(() => setShowDetails(true), 400);
+      }
+    }, 22);
+  };
+
+  const animateXp = (target) => {
+    let current = 0;
+    const step = Math.ceil(target / 30);
+    const iv = setInterval(() => {
+      current = Math.min(current + step, target);
+      setXpShown(current);
+      if (current >= target) clearInterval(iv);
+    }, 40);
+  };
+
   useEffect(() => {
     let cancelled = false;
     generateFeedback({
@@ -84,34 +111,9 @@ export default function FeedbackPage({ section, character, results, onContinue }
       cancelled = true;
       if (timerRef.current) clearInterval(timerRef.current);
     };
+    // Mount-only: one feedback request per finished quiz (props don't change while shown).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const startTypewriter = (text) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setTyped("");
-    setDoneTyping(false);
-    let i = 0;
-    timerRef.current = setInterval(() => {
-      i += 2;
-      setTyped(text.slice(0, i));
-      if (i >= text.length) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-        setDoneTyping(true);
-        setTimeout(() => setShowDetails(true), 400);
-      }
-    }, 22);
-  };
-
-  const animateXp = (target) => {
-    let current = 0;
-    const step = Math.ceil(target / 30);
-    const iv = setInterval(() => {
-      current = Math.min(current + step, target);
-      setXpShown(current);
-      if (current >= target) clearInterval(iv);
-    }, 40);
-  };
 
   return (
     <div className="min-h-screen text-slate-100 flex items-center justify-center">

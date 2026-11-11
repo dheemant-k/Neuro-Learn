@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { getMe, loginUser, registerUser, UNAUTHORIZED_EVENT } from "../utils/api";
 
 const AuthContext = createContext(null);
@@ -9,24 +9,29 @@ export function AuthProvider({ children }) {
     const saved = localStorage.getItem("neurolearn_user");
     return saved ? JSON.parse(saved) : null;
   });
-  const [loading, setLoading] = useState(true);
+  // Only "loading" while a stored token is being re-validated on startup.
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem("neurolearn_token")));
+
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem("neurolearn_token");
+    localStorage.removeItem("neurolearn_user");
+  }, []);
 
   useEffect(() => {
-    if (token) {
-      getMe()
-        .then((userData) => {
-          setUser(userData);
-          localStorage.setItem("neurolearn_user", JSON.stringify(userData));
-        })
-        .catch(() => {
-          // Token expired or invalid
-          logout();
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    if (!token) return;
+    getMe()
+      .then((userData) => {
+        setUser(userData);
+        localStorage.setItem("neurolearn_user", JSON.stringify(userData));
+      })
+      .catch(() => {
+        // Token expired or invalid
+        logout();
+      })
+      .finally(() => setLoading(false));
+  }, [token, logout]);
 
   // api.js clears storage and fires this on any 401; mirror it in React state.
   useEffect(() => {
@@ -56,13 +61,6 @@ export function AuthProvider({ children }) {
     return response;
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem("neurolearn_token");
-    localStorage.removeItem("neurolearn_user");
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -81,6 +79,8 @@ export function AuthProvider({ children }) {
   );
 }
 
+// Standard provider + hook pair; splitting them only matters for fast-refresh in dev.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

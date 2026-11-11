@@ -16,11 +16,11 @@ import {
 // Helper to format equations with distinct high-contrast chips
 function formatTextWithEquations(text) {
   if (!text) return null;
-  const parts = text.split(/(\b-?\d*x\s*[\+\-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[\+\-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9\-]+,\s*[a-zA-Z0-9\-]+\))/g);
+  const parts = text.split(/(\b-?\d*x\s*[+-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[+-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9-]+,\s*[a-zA-Z0-9-]+\))/g);
   if (parts.length <= 1) return text;
 
   return parts.map((part, i) => {
-    if (part.match(/(\b-?\d*x\s*[\+\-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[\+\-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9\-]+,\s*[a-zA-Z0-9\-]+\))/)) {
+    if (part.match(/(\b-?\d*x\s*[+-]\s*\d*y\s*=\s*-?\d+\b|\b[xy]\s*=\s*-?\d+\b|\b-?\d*x\s*[+-]\s*\d+\s*=\s*-?\d+\b|\b\([a-zA-Z0-9-]+,\s*[a-zA-Z0-9-]+\))/)) {
       return (
         <span
           key={i}
@@ -108,7 +108,7 @@ export default function BossFightPage({ character, chapter, bossConfig, onVictor
     return () => {
       mounted = false;
     };
-  }, [heroId]);
+  }, [heroId, bossTopic]);
 
   const displayBossQuestion = (q) => {
     setCurrentQ(q);
@@ -141,20 +141,32 @@ export default function BossFightPage({ character, chapter, bossConfig, onVictor
 
     const responseTimeMs = Date.now() - startRef.current;
     const chosenKey = shuffledOptions[selected]?.key;
-    const correctKey = (currentQ.correctAnswer || "A").trim().toUpperCase();
-    const isCorrect = chosenKey === correctKey;
+
+    if (!sessionId || !currentQ.id) {
+      setBattleLog("📡 Arena link offline — can't verify your attack. Head back and re-enter the arena.");
+      return;
+    }
 
     setLocked(true);
 
-    if (sessionId && currentQ.id) {
-      recordQuestionAttempt({
+    // Graded on the server; the browser only learns the answer after submitting.
+    let attemptRes;
+    try {
+      attemptRes = await recordQuestionAttempt({
         sessionId,
         questionId: currentQ.id,
-        correct: isCorrect,
+        selectedOption: chosenKey,
         responseTimeMs,
         attemptNumber: 1,
-      }).catch(() => {});
+      });
+    } catch (err) {
+      console.warn("Failed recording boss attempt:", err);
+      setLocked(false);
+      setBattleLog("📡 Signal lost before your attack landed. Try again!");
+      return;
     }
+    const isCorrect = Boolean(attemptRes?.correct);
+    setCurrentQ((q) => ({ ...q, correctAnswer: attemptRes?.correctAnswer, explanation: attemptRes?.explanation }));
 
     if (isCorrect) {
       sound.playLaser();
@@ -245,7 +257,8 @@ export default function BossFightPage({ character, chapter, bossConfig, onVictor
     }
   };
 
-  const correctKey = (currentQ?.correctAnswer || "A").trim().toUpperCase();
+  // Unknown until the server reveals it after submission.
+  const correctKey = currentQ?.correctAnswer ? currentQ.correctAnswer.trim().toUpperCase() : null;
 
   return (
     <div className={`min-h-screen text-slate-100 transition-all ${shake ? "translate-x-1 translate-y-1" : ""}`}>

@@ -65,4 +65,19 @@ public class QuestionAttemptResponse {
 
     public String getBktExplanation() { return bktExplanation; }
     public void setBktExplanation(String bktExplanation) { this.bktExplanation = bktExplanation; }
+
+    // Revealed only after the answer is submitted (questions are served without them).
+    private String selectedOption;
+    private String correctAnswer;
+    private String explanation;
+    private Integer hintsUsed;
+
+    public String getSelectedOption() { return selectedOption; }
+    public void setSelectedOption(String selectedOption) { this.selectedOption = selectedOption; }
+    public String getCorrectAnswer() { return correctAnswer; }
+    public void setCorrectAnswer(String correctAnswer) { this.correctAnswer = correctAnswer; }
+    public String getExplanation() { return explanation; }
+    public void setExplanation(String explanation) { this.explanation = explanation; }
+    public Integer getHintsUsed() { return hintsUsed; }
+    public void setHintsUsed(Integer hintsUsed) { this.hintsUsed = hintsUsed; }
 }

@@ -45,7 +45,7 @@
 14. BKT P(T) is **0.10** in `COMMIT_HISTORY…md`, **0.15** in README §26, **0.18** in code.
 15. Section unlock uses `P(L) ≥ 0.40 OR 3 correct`, while docs present 0.85 as the mastery gate — explain both thresholds or they look contradictory.
 16. README §18 checklist is entirely unticked though most items are done.
-17. **Scope conflict:** README §17/§19 say engagement/ADHD analytics are *out of scope*; `next_steps_plan.md` says *"the entire remaining scope is the ADHD Engagement Analytics Layer"*. Decide which framing the report uses (see §4).
+17. ~~**Scope conflict:** README §17/§19 vs `next_steps_plan.md` on ADHD engagement analytics.~~ Resolved: option A — no per-child flag (see Phase 7).
 
 ---
 
@@ -59,7 +59,7 @@ Effort in focused hours; adjust to the submission date.
 - [x] Add root `.gitignore` (`__pycache__/`, `*.pyc`, `.env`, `target/`, `node_modules/`, `dist/`).
 - [ ] Delete `legacy-python/` — **waiting on team decision** (§4). Tracked `.pyc` files are already untracked.
 - [x] Delete dead frontend files listed in gap #10; `npm uninstall @google/genai`. `npm run build` passes.
-- [ ] Get `npm run lint` green — was already failing before cleanup (87 problems); 65 remain, all in live files (`TestPage`, `LearnPage`, `BossFightPage`, `CharacterReactionPopup`, `soundEffects`, `api.js`, …). Needed before CI in Phase 2.
+- [x] Get `npm run lint` green — done in Phase 2: 87 → 0 problems (0 errors, 0 warnings).
 - [x] Replace `Frontend/README.md` with real run instructions; add a "Quick start" (docker → mvnw → npm) to the main README.
 - [x] Fix doc drift #14–16 (README §26 now matches `BktParameters.java` and explains the 0.40 unlock vs 0.85 mastery; README §18 checklist ticked).
 
@@ -72,45 +72,87 @@ Effort in focused hours; adjust to the submission date.
 - [x] Global `@RestControllerAdvice` → `ApiError` JSON for 400/403/404/500.
 - [x] Frontend: 401 clears the token and shows the login page; picking a chapter or the dashboard while logged out goes to login; non-students are told quests are student-only; `TestPage` no longer borrows session id 1.
 - Verified live: 39 role/ownership checks (anon, student, second student, teacher, parent) all as expected; `mvnw test` 6/6; student demo login → roadmap → adaptive quiz works.
-- Known gaps, left for later phases: teachers still see every student (Phase 3 classes); the client still decides `correct` and receives `correctAnswer` with each question, so answers can be faked (fold into Phase 2/4 — check answers server-side).
+- Known gaps, left for later phases: ~~teachers still see every student~~ (fixed in Phase 3); ~~the client decides `correct`, so answers can be faked~~ (fixed in Phase 4a: server-side grading).
 
 ### Phase 2 — Test & CI foundation (≈8 h)
-- [ ] Add Testcontainers (Postgres 16) so `contextLoads` and integration tests run without a manual DB.
-- [ ] Integration tests: register/login → start session → next-question → attempt → complete → dashboard updated (README §23 success path as a test).
-- [ ] Authorization tests: student hitting `/api/teacher/**` → 403; parent viewing an unlinked child → 403; anonymous → 401.
-- [ ] Unit tests for `ProgressService` unlock rules and `TeacherService` bottleneck rule.
-- [ ] GitHub Actions: `mvnw verify` + `npm ci && npm run lint && npm run build` on every PR.
+- [x] Testcontainers (Postgres 16, pinned to Testcontainers 1.21.4 for Docker Engine 29). `mvnw verify` needs only Docker — no manual DB.
+- [x] `LearningFlowIntegrationTest`: README §23 success path (register → session → 3 adaptive questions → complete → dashboard/progress updated), session ownership, boss XP only to the caller, new student never sees another student's data.
+- [x] `AuthorizationIntegrationTest` (19 cases): anonymous 401 JSON, role matrix for student/teacher/parent, parent linked vs unlinked child, 404s, CORS allow/deny.
+- [x] Unit tests: `ProgressRulesTest` (section unlock, mastery, boss unlock) and `TeacherRulesTest` (roster status, bottleneck alert). Rules extracted into small static methods.
+- [x] GitHub Actions `.github/workflows/ci.yml`: backend `mvnw -B verify` on JDK 17; frontend `npm ci`, `lint --max-warnings 0`, `build`. `mvnw` marked executable in git.
+- [x] Frontend lint 87 → 0. Real fixes along the way: stale keyboard handler in `TestPage` (Enter could call an outdated `submit`), idle quotes re-randomised on every render, roadmap ignoring late responses for a previous chapter.
+- [x] Fixed another "first student in the DB" fallback, this time in `ProgressService` (roadmap and boss-victory XP).
+- Total: 52 backend tests passing.
 
 ### Phase 3 — Teacher classes (≈6 h) — makes the teacher dashboard honest
-- [ ] `V8__add_classes.sql`: `classes(id, teacher_user_id, name, join_code)` + `class_enrollments(class_id, student_profile_id)`; seed demo class for V5 accounts.
-- [ ] Student joins via join code; `TeacherService` scopes all queries to the teacher's classes; class switcher in Teacher dashboard.
+- [x] `V8__add_classes.sql`: `classes` + `class_enrollments`; demo class "Gotham Academy · Algebra 1" (code `GOTHAM`) with Bruce, Dick, Jason for the V5 teacher.
+- [x] `ClassService` owns the rule "a teacher only sees students in their own classes". Roster **and** topic bottlenecks are scoped; drill-down is 403 for other teachers' students, 404 for unknown ones.
+- [x] Teacher API: `GET/POST /api/teacher/classes`, `GET /api/teacher/analytics?classId=` (omit for all classes), `DELETE /api/teacher/classes/{id}/students/{studentProfileId}`. Join codes: 6 chars, no 0/O/1/I/L, unique.
+- [x] Student API: `POST /api/student/classes/join` (case-insensitive, joining twice is harmless), `GET /api/student/classes`.
+- [x] UI: teacher "My Classes" panel (switcher, join codes, create form, Remove in roster); student "My Classes" panel with a join box. Empty classes show "no attempts yet" instead of placeholder topics.
+- [x] `ClassIntegrationTest` (6 cases). Total: 58 backend tests. Checked in the browser: create class → student joins with lowercase code → teacher sees and removes them.
+- Not done (small follow-ups if needed): rename/delete a class, student "leave class", regenerate a leaked join code.
 
-### Phase 4 — LLM question generation (README guaranteed deliverable) (≈8 h)
-Design per README §8: **offline, teacher-reviewed, never in the student loop.**
-- [ ] `V9__question_review_status.sql`: `questions.status` (`APPROVED` default for existing / `PENDING` / `REJECTED`), `questions.source` (`SEED` / `LLM`), `created_by`.
-- [ ] `ai/QuestionGenerationService` (Spring `RestClient` → Gemini; key from `GEMINI_API_KEY`): prompt with topic, difficulty, character theme, N; strict JSON schema; validate 4 options, 1 correct, dedupe vs existing text; retries.
-- [ ] `POST /api/teacher/questions/generate` → saves as `PENDING`; `GET /api/teacher/questions?status=PENDING`; `POST …/{id}/approve|reject`; edit before approve.
-- [ ] Question selection queries filter `status = 'APPROVED'`.
-- [ ] Teacher UI tab "Question Bank": generate form + review queue.
-- [ ] Unit-test the validator with a mocked LLM response (no network in CI).
+### Phase 4a — Data foundation + server-side grading ✅
+> AI scope, research and proposed re-ordering for Phases 4–9: [docs/AI_FUTURE_SCOPE.md](docs/AI_FUTURE_SCOPE.md) (Tier 0).
+- [x] `V9__attempt_logging_and_hints.sql`: `question_attempts.selected_option`, `hints_used`, `adaptive_action`, `adaptive_reason`, `difficulty_served`; `learning_sessions.last_question_id/last_adaptive_*`; `session_hint_events`.
+- [x] **Server-side grading:** attempts send `selectedOption`; the server decides `correct` and only then returns `correctAnswer` + `explanation`. Questions from `/next-question` and `/api/questions` no longer include the answer or explanation. A client-sent `correct` is ignored.
+- [x] Each attempt records the adaptive decision (action + reason) that served it and the difficulty served — explainable history for reports and Phase 5 evaluation.
+- [x] `POST /api/sessions/{id}/hints` (`FIFTY_FIFTY` / `CLUE`): the server picks the two wrong options to remove, logs the hint, counts it on the attempt. Repeats return the same result; not allowed after answering.
+- [x] BKT: a correct answer after 50:50 uses P(G)=0.5 instead of 0.25, so it raises mastery less.
+- [x] Frontend: TestPage/BossFightPage wait for the server's verdict, then reveal the answer; X-Ray and Krypton Clue go through the hint endpoint. The offline sample question (no session) is still graded locally.
+- [x] Tests: `GradingAndLoggingIntegrationTest` (6) + 2 BKT unit tests → 66 backend tests. Browser: X-Ray → answer → DB row has option, hint count, decision; boss attack graded by server.
 
-### Phase 5 — Evaluation: fixed vs adaptive (≈6 h) — gives the report numbers
-- [ ] `SimulationService` (or a JUnit/CLI runner): simulated students with known true-skill curves answer questions under (a) fixed difficulty order and (b) the adaptive engine.
-- [ ] Metrics: questions-to-mastery, final P(L) error vs true skill, % time in "productive struggle" band, difficulty trajectory.
-- [ ] Output a CSV + charts for the report; document method in `docs/evaluation.md`.
-- [ ] Reuse the same simulator later as the synthetic-data generator for DKT (future_scope §6.3).
+### Phase 4b — LLM question generation (README guaranteed deliverable) ✅
+Design per README §8: **offline, teacher-reviewed, never in the student loop.** Provider: **Google Gemini** (decided 2026-11-09).
+- [x] `V10__question_review_and_provenance.sql`: `questions.status` (APPROVED/PENDING/REJECTED; seeds = APPROVED), `source` (SEED/LLM/TEACHER), `created_by_user_id`, `generator_model`, `prompt_version`, `created_at`, `reviewed_at`; `question_misconceptions` (mistake behind each wrong option).
+- [x] `ai/LlmClient` interface → `GeminiLlmClient` (REST `generateContent`, structured JSON output, key in `x-goog-api-key` header, timeouts) and `FakeLlmClient` (offline, deterministic; default so dev/CI need no key). `AI_PROVIDER=gemini` + `GEMINI_API_KEY` to switch; `GEMINI_MODEL` defaults to `gemini-3.8-flash`.
+- [x] `QuestionGenerationService`: prompt with section description + up to 3 existing questions as examples → structural validation in code (4 distinct options, one correct, explanation, a misconception per wrong option, length limits) → duplicate check → **independent self-check solve** (kept only if it agrees) → saved as PENDING. Daily limit 40/teacher (429). Only curriculum content is sent to the model.
+- [x] Teacher API under `/api/teacher/questions`: `POST /generate`, `GET ?status=`, `PUT /{id}` (edit, re-validated), `POST /{id}/approve|reject`. Only the generating teacher reviews; only PENDING can be reviewed.
+- [x] Every student-serving query returns APPROVED only; attempts/hints on non-approved questions are 404.
+- [x] Teacher dashboard tabs: Class Analytics | Question Bank (generate form, rejected reasons, review cards with mistakes, edit/approve/reject, status filter).
+- [x] Tests: `QuestionCandidateTest` (7), `GeminiLlmClientTest` (5, mocked HTTP), `QuestionGenerationServiceTest` (8, scripted LLM), `QuestionGenerationIntegrationTest` (4) → **90 backend tests**. Browser: generate → approve/edit/reject → student sees only the approved one.
+- ⚠️ Not yet verified against the **real** Gemini API (no key in this environment) — only its request/response shape via mocked HTTP. First real run: set the key, generate 1 question, check the result.
+- Follow-ups: pre-generated hint ladder (AI scope 1b) reusing this pipeline; teacher-written questions (`source=TEACHER`); stronger maths check (SymPy) beyond the self-check.
+
+### Phase 5 — Evaluation: fixed vs adaptive ✅
+Full write-up: **[docs/evaluation.md](docs/evaluation.md)** (charts + CSVs in `docs/evaluation/`).
+- [x] `evaluation/` package (plain Java CLI, no DB): simulated students (ability vs item difficulty, learning peaks just above the student's level, optional frustration quitting), same students and random draws under every policy.
+- [x] Policies: fixed ramp, **current engine (unchanged)**, tuned engine, difficulty-aware Elo, ramp with remediation, random. Tuning on a training population (seed 1), results on a separate test population (seed 42), 6 sensitivity scenarios.
+- [x] `BktFitter` (MLE) with a parameter-recovery check (±0.02); fit on the app's logged attempts → too little data (60 answers, 8 students).
+- [x] Charts (`make_charts.py`), 17 unit tests incl. a regression guard on the headline results → **116 backend tests**.
+- **Findings:** fixed ramp beats the current engine on mastery within 30 questions (73.4% vs 61.2%) in every scenario; the engine's "Mastered" claim is early and almost never true (0% vs 94% for a difficulty-aware estimate); adaptivity reduces quitting when frustration is modelled.
+- **Follow-ups:** (1) earn "Mastered" with level-3 evidence — small, high-value app change; (2) classroom pilot (fixed vs adaptive A/B) before re-tuning difficulty selection; (3) IRT calibration after ~500 respondents; (4) simulator can feed DKT experiments later.
 
 ### Phase 6 — Deployment (≈5 h)
 - [ ] `backend-java/Dockerfile` (multi-stage maven → JRE 17), `Frontend/Dockerfile` (build → nginx, proxy `/api`).
 - [ ] Extend `docker-compose.yml` to the full stack + `.env.example`; one command `docker compose up` runs the demo.
 - [ ] Optional: deploy to Render/Railway/Fly for a live URL.
 
-### Phase 7 — Engagement analytics (stretch; from `next_steps_plan.md` A–D) (≈12 h)
-Only after 0–6. Renumber migrations (V10+), and reuse the plan already written there:
-- [ ] A: `learning_sessions.completion_status` + `@Scheduled` abandonment job (+ `@EnableScheduling`).
-- [ ] B: `AnalyticsService` — response-time mean/σ/z-variance; oscillation `[C,W,C,W]` classifier.
-- [ ] C: composite **Engagement Pattern Flag** (🟢/🟡/🔴) in teacher roster with the *"not a clinical assessment"* tooltip and "flagged only" filter.
-- [ ] D: parent weekly-activity chart + response-time trend.
+**Hosting plan if the frontend goes on Vercel** (Vercel runs static sites and short serverless
+functions — it cannot run the always-on Spring Boot JVM or host Postgres):
+
+| Piece | Where | Notes |
+|---|---|---|
+| React frontend | **Vercel** | Root dir `Frontend`, build `npm run build`, output `dist`. Env `VITE_API_BASE=https://<backend-host>/api` (baked in at build time). |
+| Spring Boot API | **Render / Railway / Fly.io / Koyeb** (Docker from the Phase 6 Dockerfile) | Env: `SPRING_PROFILES_ACTIVE=prod`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS=https://<app>.vercel.app`, DB vars below. Flyway migrates the DB on startup. |
+| PostgreSQL 16 | **Neon / Supabase / Render Postgres** (managed) | Set `SPRING_DATASOURCE_URL=jdbc:postgresql://<host>/<db>?sslmode=require`, `DB_USER`, `DB_PASSWORD` (Spring's env binding overrides the URL built from `DB_HOST`). Use the provider's pooled connection string; keep Hikari pool small (≈5) on free tiers. |
+
+Free-tier caveats: Render free web services sleep after inactivity (first request ~30–60 s); Neon free
+compute also scales to zero (first query slower). Fine for a demo; warm it up before presenting.
+The seeded demo accounts (V5, password `password123`) will exist in production too — remove or
+change them before sharing the URL publicly.
+
+### Phase 7 — Learning-pace insights (stretch) (≈8 h)
+**Decided 2026-11-09 (option A in [docs/AI_FUTURE_SCOPE.md §6](docs/AI_FUTURE_SCOPE.md)):** no per-child
+ADHD/engagement flag. RT variability isn't specific to ADHD, and India's DPDP rules prohibit behavioural
+monitoring of children. The ADHD-friendly claim rests on the design (short sessions, instant feedback,
+gamification, calm mode). Only after 0–6; next free migration is V9+.
+- [ ] Session completion status (`IN_PROGRESS` / `COMPLETED` / `ABANDONED`) + `@Scheduled` timeout job — used for the student's own stats and class aggregates.
+- [ ] Student-facing pacing feedback ("you tend to do better after a short break") computed from their own response times — shown to the student only.
+- [ ] Teacher view: **class-level** aggregates only (e.g. "this class often stops during Elimination"); no per-student engagement label.
+- [ ] Parent view: weekly activity (sessions per day) — activity, not a behavioural score.
+- [x] ~~Composite Engagement Pattern Flag (🟢/🟡/🔴) in teacher roster~~ — cancelled.
 
 ### Phase 8 — Content scalability (stretch, ≈8 h) — do before writing Chapter 3
 - [ ] Move chapters/sections/story text into DB (`chapters`, `sections`, `section_briefings` per theme) and serve via `GET /api/curriculum`.
@@ -130,16 +172,16 @@ Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 4 ─► Phase 5 ─► Phase
                                                          └──► Phase 7 ─► Phase 8 ─► Phase 9   ← stretch
 ```
 - **Short on time?** Do 0, 1, 2 (just the success-path + authz tests), 4, 6. Skip 3 and 5 and say so in the report's future work.
-- **Want the ADHD/engagement angle in the report?** Swap Phase 7 ahead of Phase 5, and update README §17/§19 so the report doesn't contradict itself.
+- **ADHD angle in the report:** describe the ADHD-friendly design and why a per-child flag was rejected (evidence + DPDP), per option A.
 
 ## 4. Decisions needed from the team
-1. **Positioning:** keep README's "engagement is future work" or adopt `next_steps_plan.md`'s "engagement analytics is the remaining scope"? (Affects Phase 7's priority and README wording.)
+1. ~~**Positioning** of engagement/ADHD analytics~~ — **decided 2026-11-09: option A** (no per-child flag; see Phase 7).
 2. **Submission date** — determines the cut line above.
 3. **`legacy-python/`** — delete or keep as archive?
 4. **Live deployment** needed, or is `docker compose up` enough for grading?
 
 ## 5. Working conventions going forward
 - **Branch per phase** (`feat/security-hardening`, `feat/llm-questions`, …) → PR → CI green → merge. Stop committing straight to `main`.
-- **Flyway:** never edit an applied migration; next free number is **V8**. Seed data stays in its own migrations.
+- **Flyway:** never edit an applied migration; next free number is **V11**. Seed data stays in its own migrations.
 - **Definition of done per item:** backend tests pass, `npm run lint && npm run build` pass, README/API docs updated, demo account path still works.
 - **One plan file:** update this file's checkboxes as work lands instead of adding new top-level `.md` plans.

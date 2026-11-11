@@ -25,6 +25,7 @@ async function request(path, options = {}) {
     err.status = res.status;
     throw err;
   }
+  if (res.status === 204) return null;
   return res.json();
 }
 
@@ -34,6 +35,14 @@ function post(path, body) {
 
 function get(path) {
   return request(path);
+}
+
+function del(path) {
+  return request(path, { method: "DELETE" });
+}
+
+function put(path, body) {
+  return request(path, { method: "PUT", body: JSON.stringify(body) });
 }
 
 // -------------------------------------------------------------
@@ -94,13 +103,19 @@ export async function fetchNextAdaptiveQuestion({ sessionId, topic, character, c
   return get(`/sessions/${sessionId}/next-question${query}`);
 }
 
-export async function recordQuestionAttempt({ sessionId, questionId, correct, responseTimeMs, attemptNumber = 1 }) {
+// The server grades the answer and returns { correct, correctAnswer, explanation, ... }.
+export async function recordQuestionAttempt({ sessionId, questionId, selectedOption, responseTimeMs, attemptNumber = 1 }) {
   return post(`/sessions/${sessionId}/attempt`, {
     questionId,
-    correct,
+    selectedOption,
     responseTimeMs,
     attemptNumber,
   });
+}
+
+// type: "FIFTY_FIFTY" → { eliminatedOptions: ["B","D"], hintsUsed } ; "CLUE" → logged only
+export async function requestSessionHint({ sessionId, questionId, type }) {
+  return post(`/sessions/${sessionId}/hints`, { questionId, type });
 }
 
 export async function completeLearningSession({ sessionId }) {
@@ -129,12 +144,61 @@ export async function getDashboard() {
 // -------------------------------------------------------------
 // Teacher Analytics APIs
 // -------------------------------------------------------------
-export async function fetchTeacherAnalytics() {
-  return get("/teacher/analytics");
+// classId omitted/null → all of the teacher's classes
+export async function fetchTeacherAnalytics(classId = null) {
+  return get(classId ? `/teacher/analytics?classId=${encodeURIComponent(classId)}` : "/teacher/analytics");
 }
 
 export async function fetchTeacherStudentDashboard(studentProfileId) {
   return get(`/teacher/student/${studentProfileId}`);
+}
+
+export async function fetchTeacherClasses() {
+  return get("/teacher/classes");
+}
+
+export async function createTeacherClass(name) {
+  return post("/teacher/classes", { name });
+}
+
+export async function removeStudentFromClass(classId, studentProfileId) {
+  return del(`/teacher/classes/${classId}/students/${studentProfileId}`);
+}
+
+// -------------------------------------------------------------
+// Teacher Question Bank (LLM-assisted generation + review)
+// -------------------------------------------------------------
+// { topic, difficulty (1-3), characterTheme, count (1-5) } → { created: [...], rejected: [...], model }
+export async function generateQuestions(params) {
+  return post("/teacher/questions/generate", params);
+}
+
+// status: PENDING | APPROVED | REJECTED — the teacher's own generated questions
+export async function fetchTeacherQuestions(status = "PENDING") {
+  return get(`/teacher/questions?status=${encodeURIComponent(status)}`);
+}
+
+export async function updateTeacherQuestion(id, edits) {
+  return put(`/teacher/questions/${id}`, edits);
+}
+
+export async function approveTeacherQuestion(id) {
+  return post(`/teacher/questions/${id}/approve`, {});
+}
+
+export async function rejectTeacherQuestion(id) {
+  return post(`/teacher/questions/${id}/reject`, {});
+}
+
+// -------------------------------------------------------------
+// Student Classes APIs
+// -------------------------------------------------------------
+export async function fetchMyClasses() {
+  return get("/student/classes");
+}
+
+export async function joinClass(joinCode) {
+  return post("/student/classes/join", { joinCode });
 }
 
 // -------------------------------------------------------------
@@ -155,7 +219,7 @@ export async function fetchChildReportCard(studentProfileId) {
 // -------------------------------------------------------------
 // Story & Feedback APIs (Dynamic Character Lore & Mission Engine)
 // -------------------------------------------------------------
-export async function generateStory({ character, sectionTitle, sectionTopic, sessionAccuracy = 0 }) {
+export async function generateStory({ character, sectionTitle, sectionTopic }) {
   const charStr = (typeof character === "string" ? character : character?.name || character?.id || "Superman").toLowerCase();
   const isBatman = charStr.includes("batman");
   const isSupergirl = charStr.includes("supergirl");
@@ -608,12 +672,6 @@ export async function generateFeedback({ character, totalCorrect, totalQuestions
   });
 }
 
-export async function generateEvaluation({ character, chapterTitle, topic }) {
-  return Promise.resolve({
-    message: `Evaluation completed for ${chapterTitle}.`,
-    score: 85,
-  });
-}
 
 export async function updateProgress({ studentId = "default", sectionId, correct, responseTime = 0, xpEarned = 0 }) {
   return post("/progress/update", {

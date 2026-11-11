@@ -4,23 +4,29 @@ import { fetchProgress } from "../utils/api";
 export default function RoadmapPage({ chapter, character, onLearn, onTest, onFinalBoss, onBack }) {
   const [modal, setModal] = useState(null); // section object or null
   const [progressData, setProgressData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
   const chapterId = chapter?.id || "linear_eq_2var";
 
+  // Manual refresh ("Sync Progress" button).
   const loadProgress = async () => {
     try {
       const data = await fetchProgress(chapterId);
       if (data) setProgressData(data);
     } catch (err) {
       console.warn("Failed fetching roadmap progress:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
+  // Initial load and chapter switches; ignore late responses for a previous chapter.
   useEffect(() => {
-    loadProgress();
+    let cancelled = false;
+    fetchProgress(chapterId)
+      .then((data) => {
+        if (!cancelled && data) setProgressData(data);
+      })
+      .catch((err) => console.warn("Failed fetching roadmap progress:", err));
+    return () => {
+      cancelled = true;
+    };
   }, [chapterId]);
 
   const progressMap = {};

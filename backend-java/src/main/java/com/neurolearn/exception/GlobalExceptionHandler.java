@@ -34,6 +34,17 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, message, req);
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ApiError> handleTooMany(TooManyRequestsException ex, HttpServletRequest req) {
+        return build(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(com.neurolearn.ai.LlmUnavailableException.class)
+    public ResponseEntity<ApiError> handleLlmUnavailable(com.neurolearn.ai.LlmUnavailableException ex, HttpServletRequest req) {
+        log.warn("LLM unavailable on {}: {}", req.getRequestURI(), ex.getMessage());
+        return build(HttpStatus.SERVICE_UNAVAILABLE, "Question generator unavailable: " + ex.getMessage(), req);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleBadRequest(IllegalArgumentException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);

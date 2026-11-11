@@ -56,6 +56,19 @@ public class QuestionResponse {
         );
     }
 
+    /**
+     * What a student sees before answering: no correct answer, no explanation.
+     * Both are returned by the attempt endpoint after submission.
+     */
+    public static QuestionResponse forStudent(Question q) {
+        QuestionResponse r = fromEntity(q);
+        if (r != null) {
+            r.setCorrectAnswer(null);
+            r.setExplanation(null);
+        }
+        return r;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
